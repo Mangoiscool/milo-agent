@@ -41,7 +41,7 @@ def create_llm(
         llm = create_llm("glm", api_key="xxx.xxx", model="glm-4-flash")
         
         # Ollama 本地
-        llm = create_llm("ollama", model="qwen2:7b")
+        llm = create_llm("ollama", model="qwen3.5:4b", think=False)
     """
     provider = provider.lower()
     

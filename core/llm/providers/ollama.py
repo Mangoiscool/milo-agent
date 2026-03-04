@@ -9,7 +9,7 @@ Ollama 本地推理
 
 前提：需要先安装 Ollama 并下载模型
 - 安装：https://ollama.ai
-- 下载模型：ollama pull qwen2:7b
+- 下载模型：ollama pull qwen3.5:4b
 """
 
 import json
@@ -31,26 +31,29 @@ class OllamaLLM(BaseLLM):
         base_url: str = "http://localhost:11434",
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        think: bool = True,
         **kwargs
     ):
         super().__init__(model, temperature, max_tokens, **kwargs)
         self.base_url = base_url.rstrip("/")
-    
+        self.think = think  # 控制思考模式（Qwen3 等模型）
+
     def _build_request_body(self, messages: List[Message], stream: bool = False) -> dict:
         """
         Ollama 请求格式（与 OpenAI 略有不同）
-        
+
         {
-            "model": "qwen2:7b",
+            "model": "qwen3.5:4b",
             "messages": [...],
             "stream": false,
             "options": {
                 "temperature": 0.7,
                 "num_predict": 2048
-            }
+            },
+            "think": false  # 关闭思考模式（Qwen3）
         }
         """
-        return {
+        body = {
             "model": self.model,
             "messages": [m.to_api_format() for m in messages],
             "stream": stream,
@@ -59,7 +62,11 @@ class OllamaLLM(BaseLLM):
                 "num_predict": self.max_tokens,
             }
         }
-    
+        # 如果 think=False，添加到请求体（Ollama 会忽略不支持该参数的模型）
+        if not self.think:
+            body["think"] = False
+        return body
+
     def chat(self, messages: List[Message]) -> LLMResponse:
         """同步对话"""
         import httpx
@@ -92,7 +99,7 @@ class OllamaLLM(BaseLLM):
         """
         Ollama 响应格式：
         {
-            "model": "qwen2:7b",
+            "model": "qwen3.5:4b",
             "message": {"role": "assistant", "content": "..."},
             "done": true,
             "prompt_eval_count": 10,
@@ -124,8 +131,8 @@ class OllamaLLM(BaseLLM):
         流式输出
         
         Ollama 流式格式（每行一个 JSON）：
-        {"model":"qwen2","message":{"role":"assistant","content":"你"},"done":false}
-        {"model":"qwen2","message":{"role":"assistant","content":"好"},"done":true}
+        {"model":"qwen3.5","message":{"role":"assistant","content":"你"},"done":false}
+        {"model":"qwen3.5","message":{"role":"assistant","content":"好"},"done":true}
         """
         import httpx
         
@@ -147,18 +154,22 @@ class OllamaLLM(BaseLLM):
                         continue
 
 
-def create_ollama_llm(model: str = "qwen2:7b", base_url: str = None, **kwargs) -> OllamaLLM:
+def create_ollama_llm(model: str = "qwen3.5:4b", base_url: str = None, think: bool = True, **kwargs) -> OllamaLLM:
     """
     创建 Ollama LLM 实例
-    
+
     常用模型：
-    - qwen2:7b      - 通义千问 7B
-    - qwen2:14b     - 通义千问 14B（需要更多显存）
+    - qwen3.5:4b    - 通义千问 3.5 4B（推荐，支持思考模式）
+    - qwen2.5:7b    - 通义千问 2.5 7B
     - llama3:8b     - Llama 3 8B
     - glm4:9b       - GLM-4 9B
+
+    参数：
+    - think: 是否启用思考模式（仅 Qwen3 等支持），默认 True
     """
     return OllamaLLM(
         model=model,
         base_url=base_url or "http://localhost:11434",
+        think=think,
         **kwargs
     )

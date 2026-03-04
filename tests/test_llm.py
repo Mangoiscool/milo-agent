@@ -9,7 +9,7 @@ LLM 模块测试脚本
     python tests/test_llm.py --provider qwen
     
     # 测试 Ollama 本地
-    python tests/test_llm.py --provider ollama --model qwen2:7b
+    python tests/test_llm.py --provider ollama --model qwen3.5:4b
     
     # 流式输出测试
     python tests/test_llm.py --provider glm --stream

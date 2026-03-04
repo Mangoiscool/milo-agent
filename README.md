@@ -55,7 +55,7 @@ python tests/test_llm.py --provider glm
 python tests/test_llm.py --provider qwen
 
 # 测试 Ollama 本地（需要先安装 Ollama 并下载模型）
-python tests/test_llm.py --provider ollama --model qwen2:7b
+python tests/test_llm.py --provider ollama --model qwen3.5:4b
 
 # 测试流式输出
 python tests/test_llm.py --provider glm --stream

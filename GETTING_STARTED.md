@@ -60,7 +60,7 @@ Message(role=Role.USER, content="你好")
 ```python
 # 一行代码切换模型
 llm = create_llm("glm", api_key="xxx")
-llm = create_llm("ollama", model="qwen2:7b")
+llm = create_llm("ollama", model="qwen3.5:4b", think=False)
 ```
 
 ### 4. 同步 vs 异步
