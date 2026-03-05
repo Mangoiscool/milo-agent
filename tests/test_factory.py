@@ -79,3 +79,11 @@ class TestCreateLLM:
         llm = create_llm("ollama", temperature=0.5, max_tokens=500)
         assert llm.temperature == 0.5
         assert llm.max_tokens == 500
+
+    def test_think_parameter(self):
+        """测试 think 参数"""
+        llm_with_think = create_llm("ollama", think=True)
+        assert llm_with_think.think is True
+
+        llm_no_think = create_llm("ollama", think=False)
+        assert llm_no_think.think is False
