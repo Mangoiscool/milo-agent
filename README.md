@@ -89,5 +89,3 @@ milo-agent/
 ## License
 
 MIT
-
-Hello Agent!
