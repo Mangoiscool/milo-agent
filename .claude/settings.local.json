@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_llm_base.py tests/test_factory.py -v)",
+      "Bash(source ~/miniconda3/etc/profile.d/conda.sh)",
+      "Bash(conda activate milo-agent)",
+      "Bash(pip install -e \".[dev]\" --quiet)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(git add core/logger.py tests/test_*.py core/llm/ pyproject.toml)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git reset --soft HEAD~1)",
+      "Bash(git config user.name)",
+      "Bash(git config user.email)",
+      "Bash(git config user.email \"mangoisok@qq.com\")",
+      "Bash(git push --force)",
+      "Bash(git config user.name \"Claude\")",
+      "Bash(git config user.email \"noreply@anthropic.com\")",
+      "Bash(git add README.md)",
+      "Bash(git config user.name \"Mango\")"
+    ]
+  }
+}
