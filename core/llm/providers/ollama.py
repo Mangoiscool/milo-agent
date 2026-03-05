@@ -14,8 +14,10 @@ Ollama 本地推理
 
 import json
 from typing import AsyncIterator, List
+import httpx
 
 from ..base import BaseLLM, Message, LLMResponse
+from ...logger import get_logger
 
 
 class OllamaLLM(BaseLLM):
@@ -37,6 +39,7 @@ class OllamaLLM(BaseLLM):
         super().__init__(model, temperature, max_tokens, **kwargs)
         self.base_url = base_url.rstrip("/")
         self.think = think  # 控制思考模式（Qwen3 等模型）
+        self.logger = get_logger(self.__class__.__name__)
 
     def _build_request_body(self, messages: List[Message], stream: bool = False) -> dict:
         """
@@ -69,30 +72,34 @@ class OllamaLLM(BaseLLM):
 
     def chat(self, messages: List[Message]) -> LLMResponse:
         """同步对话"""
-        import httpx
-        
+        self.logger.info(f"Ollama chat with {self.model}, messages: {len(messages)}")
         url = f"{self.base_url}/api/chat"
         body = self._build_request_body(messages, stream=False)
-        
-        with httpx.Client() as client:
-            response = client.post(url, json=body, timeout=120.0)
+
+        self.logger.debug(f"Requesting Ollama at {url}")
+
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(url, json=body)
             response.raise_for_status()
             data = response.json()
-        
+
+        self.logger.debug(f"Ollama response: tokens={data.get('prompt_eval_count', 0)}+{data.get('eval_count', 0)}")
         return self._parse_response(data)
     
     async def achat(self, messages: List[Message]) -> LLMResponse:
         """异步对话"""
-        import httpx
-        
+        self.logger.info(f"Ollama async chat with {self.model}, messages: {len(messages)}")
         url = f"{self.base_url}/api/chat"
         body = self._build_request_body(messages, stream=False)
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=body, timeout=120.0)
+
+        self.logger.debug(f"Async requesting Ollama at {url}")
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(url, json=body)
             response.raise_for_status()
             data = response.json()
-        
+
+        self.logger.debug(f"Ollama async response: tokens={data.get('prompt_eval_count', 0)}+{data.get('eval_count', 0)}")
         return self._parse_response(data)
     
     def _parse_response(self, data: dict) -> LLMResponse:
@@ -129,28 +136,34 @@ class OllamaLLM(BaseLLM):
     async def astream(self, messages: List[Message]) -> AsyncIterator[str]:
         """
         流式输出
-        
+
         Ollama 流式格式（每行一个 JSON）：
         {"model":"qwen3.5","message":{"role":"assistant","content":"你"},"done":false}
         {"model":"qwen3.5","message":{"role":"assistant","content":"好"},"done":true}
         """
-        import httpx
-        
+        self.logger.info(f"Ollama stream chat with {self.model}, messages: {len(messages)}")
         url = f"{self.base_url}/api/chat"
         body = self._build_request_body(messages, stream=True)
-        
+
+        self.logger.debug(f"Starting Ollama stream at {url}")
+
         async with httpx.AsyncClient() as client:
             async with client.stream("POST", url, json=body, timeout=120.0) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if not line:
                         continue
-                    
+
                     try:
                         data = json.loads(line)
                         if "message" in data and "content" in data["message"]:
-                            yield data["message"]["content"]
-                    except json.JSONDecodeError:
+                            content = data["message"]["content"]
+                            yield content
+                        if data.get("done"):
+                            self.logger.debug("Ollama stream completed")
+                            break
+                    except json.JSONDecodeError as e:
+                        self.logger.debug(f"Ollama stream parse error: {e}")
                         continue
 
 

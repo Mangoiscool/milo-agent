@@ -12,6 +12,7 @@ from typing import AsyncIterator, List, Optional
 import httpx
 
 from ..base import BaseLLM, Message, LLMResponse
+from ...logger import get_logger
 
 
 class OpenAICompatibleLLM(BaseLLM):
@@ -36,6 +37,30 @@ class OpenAICompatibleLLM(BaseLLM):
         super().__init__(model, temperature, max_tokens, **kwargs)
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+        self.logger = get_logger(self.__class__.__name__)
+
+    def _make_request(self, messages: List[Message], stream: bool = False) -> dict:
+        """
+        执行 HTTP 请求（同步）
+
+        由 chat() 方法调用，避免与 achat() 的代码重复
+        """
+        url = f"{self.base_url}/chat/completions"
+        body = self._build_request_body(messages, stream=stream)
+
+        self.logger.debug(f"Requesting {url} with model {self.model}")
+
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                url,
+                headers=self._get_headers(),
+                json=body,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        self.logger.debug(f"Response received: {data.get('usage', {})}")
+        return data
     
     def _build_request_body(self, messages: List[Message], stream: bool = False) -> dict:
         """
@@ -62,38 +87,28 @@ class OpenAICompatibleLLM(BaseLLM):
     
     def chat(self, messages: List[Message]) -> LLMResponse:
         """同步对话"""
-        import httpx
-        
-        url = f"{self.base_url}/chat/completions"
-        body = self._build_request_body(messages, stream=False)
-        
-        with httpx.Client() as client:
-            response = client.post(
-                url,
-                headers=self._get_headers(),
-                json=body,
-                timeout=60.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-        
+        self.logger.info(f"Chat with {self.model}, messages: {len(messages)}")
+        data = self._make_request(messages, stream=False)
         return self._parse_response(data)
     
     async def achat(self, messages: List[Message]) -> LLMResponse:
         """异步对话"""
+        self.logger.info(f"Async chat with {self.model}, messages: {len(messages)}")
         url = f"{self.base_url}/chat/completions"
         body = self._build_request_body(messages, stream=False)
-        
-        async with httpx.AsyncClient() as client:
+
+        self.logger.debug(f"Async requesting {url} with model {self.model}")
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 url,
                 headers=self._get_headers(),
                 json=body,
-                timeout=60.0,
             )
             response.raise_for_status()
             data = response.json()
-        
+
+        self.logger.debug(f"Async response received: {data.get('usage', {})}")
         return self._parse_response(data)
     
     def _parse_response(self, data: dict) -> LLMResponse:
@@ -127,15 +142,18 @@ class OpenAICompatibleLLM(BaseLLM):
     async def astream(self, messages: List[Message]) -> AsyncIterator[str]:
         """
         流式输出
-        
+
         SSE (Server-Sent Events) 格式：
         data: {"choices":[{"delta":{"content":"你"}}]}
         data: {"choices":[{"delta":{"content":"好"}}]}
         data: [DONE]
         """
+        self.logger.info(f"Stream chat with {self.model}, messages: {len(messages)}")
         url = f"{self.base_url}/chat/completions"
         body = self._build_request_body(messages, stream=True)
-        
+
+        self.logger.debug(f"Starting stream to {url}")
+
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
@@ -148,17 +166,20 @@ class OpenAICompatibleLLM(BaseLLM):
                 async for line in response.aiter_lines():
                     if not line or not line.startswith("data: "):
                         continue
-                    
+
                     data_str = line[6:]  # 去掉 "data: "
                     if data_str == "[DONE]":
+                        self.logger.debug("Stream completed")
                         break
-                    
+
                     try:
                         data = json.loads(data_str)
                         delta = data["choices"][0].get("delta", {})
                         if "content" in delta:
-                            yield delta["content"]
-                    except (json.JSONDecodeError, KeyError, IndexError):
+                            content = delta["content"]
+                            yield content
+                    except (json.JSONDecodeError, KeyError, IndexError) as e:
+                        self.logger.debug(f"Stream parse error: {e}")
                         continue
 
 

@@ -12,6 +12,8 @@ from enum import Enum
 from typing import AsyncIterator, List, Optional
 from pydantic import BaseModel
 
+from ..logger import get_logger
+
 
 class Role(str, Enum):
     """消息角色"""
@@ -77,6 +79,7 @@ class BaseLLM(ABC):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.extra_params = kwargs
+        self.logger = get_logger(self.__class__.__name__)
     
     @abstractmethod
     def chat(self, messages: List[Message]) -> LLMResponse:

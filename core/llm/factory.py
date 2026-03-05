@@ -61,7 +61,11 @@ def create_llm(
         )
     
     elif provider == "ollama":
-        return create_ollama_llm(model=model, base_url=base_url, **kwargs)
+        return create_ollama_llm(
+            model=model or "qwen3.5:4b",
+            base_url=base_url,
+            **kwargs
+        )
     
     else:
         raise ValueError(
