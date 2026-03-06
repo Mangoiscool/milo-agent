@@ -4,8 +4,9 @@ Provides basic conversational capabilities with memory
 """
 
 from enum import Enum
-from typing import AsyncIterator, Callable, Dict, List, Optional
+from typing import AsyncIterator, Callable, Dict, List, Optional, Union
 
+from agents.config import AgentConfig
 from core.llm.base import BaseLLM, LLMResponse, Message, Role
 from core.logger import get_logger
 from core.memory.base import BaseMemory
@@ -13,7 +14,7 @@ from core.memory.short_term import ShortTermMemory
 
 
 class AgentEvent(str, Enum):
-    """Events that can be emitted by the agent"""
+    """Events that can be emitted by agent"""
     BEFORE_CHAT = "before_chat"          # Before sending user input to LLM
     AFTER_CHAT = "after_chat"            # After receiving LLM response
     STREAM_START = "stream_start"         # When streaming starts
@@ -25,7 +26,7 @@ class AgentEvent(str, Enum):
 class SimpleAgent:
     """
     Minimal agent implementation
-    
+
     Features:
     - Conversational interface with memory
     - Support for system prompts
@@ -49,6 +50,15 @@ class SimpleAgent:
 
         # Event system
         agent.on(AgentEvent.AFTER_CHAT, lambda response: print(f"Response: {response[:50]}..."))
+
+        # Config
+        from agents.config import AgentConfig
+        config = AgentConfig(
+            enable_stream_fallback=True,
+            max_memory_messages=100,
+            system_prompt="You are a helpful assistant"
+        )
+        agent = SimpleAgent(llm, config=config)
     """
 
     def __init__(
@@ -56,7 +66,8 @@ class SimpleAgent:
         llm: BaseLLM,
         memory: Optional[BaseMemory] = None,
         system_prompt: Optional[str] = None,
-        enable_stream_fallback: bool = True
+        enable_stream_fallback: bool = True,
+        config: Optional[AgentConfig] = None
     ):
         """
         Initialize SimpleAgent
@@ -66,11 +77,24 @@ class SimpleAgent:
             memory: Memory instance (default: ShortTermMemory with 50 messages)
             system_prompt: System prompt for the agent (optional)
             enable_stream_fallback: Enable automatic fallback from stream to async chat (default: True)
+            config: AgentConfig object for unified configuration (optional, overrides other params)
         """
+        # Use config if provided, otherwise create from individual params
+        effective_config: AgentConfig
+        if config is None:
+            effective_config = AgentConfig(
+                enable_stream_fallback=enable_stream_fallback,
+                max_memory_messages=50,
+                system_prompt=system_prompt
+            )
+        else:
+            effective_config = config
+
         self.llm = llm
-        self.memory = memory or ShortTermMemory()
-        self.system_prompt = system_prompt
-        self.enable_stream_fallback = enable_stream_fallback
+        self.memory = memory or ShortTermMemory(effective_config.max_memory_messages)
+        self.system_prompt = effective_config.system_prompt
+        self.enable_stream_fallback = effective_config.enable_stream_fallback
+        self.config = effective_config
         self.logger = get_logger(self.__class__.__name__)
 
         # Event handlers: event_type -> list[handler]
@@ -104,27 +128,27 @@ class SimpleAgent:
                 handler(**kwargs)
             except Exception as e:
                 self.logger.warning(f"Event handler failed for {event.value}: {e}")
-    
+
     def _build_messages(self) -> List[Message]:
         """
-        Build the message list for LLM
-        
+        Build message list for LLM
+
         Combines system prompt (if set) with memory messages
-        
+
         Returns:
             Complete list of messages for LLM
         """
         messages = []
-        
+
         # Add system prompt if configured
         if self.system_prompt:
             messages.append(Message(role=Role.SYSTEM, content=self.system_prompt))
-        
+
         # Add memory messages
         messages.extend(self.memory.get_all())
-        
+
         return messages
-    
+
     def chat(self, user_input: str) -> str:
         """
         Synchronous chat
@@ -158,7 +182,7 @@ class SimpleAgent:
         # 5. Emit event and return response
         self._emit(AgentEvent.AFTER_CHAT, response=response.content, mode="sync")
         return response.content
-    
+
     async def achat(self, user_input: str) -> str:
         """
         Asynchronous chat
@@ -192,7 +216,7 @@ class SimpleAgent:
         # 5. Emit event and return response
         self._emit(AgentEvent.AFTER_CHAT, response=response.content, mode="async")
         return response.content
-    
+
     async def astream(self, user_input: str) -> AsyncIterator[str]:
         """
         Asynchronous streaming chat with automatic fallback
@@ -244,20 +268,20 @@ class SimpleAgent:
 
         self.logger.info(f"Agent response (stream complete): {complete_response[:100]}...")
         self._emit(AgentEvent.AFTER_CHAT, response=complete_response, mode="stream")
-    
+
     def clear_history(self) -> None:
         """Clear conversation history from memory"""
         self.memory.clear()
         self.logger.info("Conversation history cleared")
-    
+
     def get_history(self) -> List[Message]:
         """
         Get conversation history
-        
+
         Returns:
             List of all messages in memory
         """
         return self.memory.get_all()
-    
+
     def __repr__(self) -> str:
         return f"<SimpleAgent llm={self.llm} memory={self.memory}>"
