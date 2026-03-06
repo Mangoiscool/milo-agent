@@ -256,8 +256,14 @@ class SimpleAgent:
 
                 # Fallback: use async chat
                 response = await self.llm.achat(messages)
-                yield response.content
-                full_response = [response.content]
+
+                # Only yield if we have actual content
+                if response.content:
+                    yield response.content
+                    full_response = [response.content]
+                else:
+                    self.logger.error(f"Async chat returned empty response")
+                    full_response = []
             else:
                 raise
 
