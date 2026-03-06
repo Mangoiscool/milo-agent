@@ -158,7 +158,8 @@ class OllamaLLM(BaseLLM):
                         data = json.loads(line)
                         if "message" in data and "content" in data["message"]:
                             content = data["message"]["content"]
-                            yield content
+                            if content:  # Only yield if content is not None/empty
+                                yield content
                         if data.get("done"):
                             self.logger.debug("Ollama stream completed")
                             break

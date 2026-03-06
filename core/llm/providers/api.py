@@ -177,7 +177,8 @@ class OpenAICompatibleLLM(BaseLLM):
                         delta = data["choices"][0].get("delta", {})
                         if "content" in delta:
                             content = delta["content"]
-                            yield content
+                            if content:  # Only yield if content is not None/empty
+                                yield content
                     except (json.JSONDecodeError, KeyError, IndexError) as e:
                         self.logger.debug(f"Stream parse error: {e}")
                         continue
