@@ -19,16 +19,18 @@ class PersistentMemory(ShortTermMemory):
     Extends ShortTermMemory with save/load functionality
     """
 
-    def __init__(self, max_messages: int = 50, storage_path: Optional[str] = None):
+    def __init__(self, max_messages: int = 50, storage_path: Optional[str] = None, auto_save: bool = True):
         """
         Initialize persistent memory
 
         Args:
             max_messages: Maximum number of messages to store (default: 50)
             storage_path: Path to save/load memory from (default: ~/.milo-agent/memory.json)
+            auto_save: Enable auto-save after each message add (default: True, for streaming use False)
         """
         super().__init__(max_messages)
         self.storage_path = Path(storage_path) if storage_path else Path.home() / ".milo-agent" / "memory.json"
+        self.auto_save = auto_save
 
     def save(self) -> None:
         """
@@ -86,7 +88,8 @@ class PersistentMemory(ShortTermMemory):
         """
         super().add(message)
         # Auto-save after adding (could be made configurable)
-        self.save()
+        if self.auto_save:
+            self.save()
 
     def clear(self) -> None:
         """
@@ -95,6 +98,7 @@ class PersistentMemory(ShortTermMemory):
         Extends parent to delete storage file.
         """
         super().clear()
+        # Delete storage file
         if self.storage_path.exists():
             self.storage_path.unlink()
             self.logger.info(f"Memory file deleted: {self.storage_path}")
