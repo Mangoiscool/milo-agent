@@ -24,9 +24,11 @@ milo-agent/
 │   └── memory/
 │       ├── __init__.py
 │       ├── base.py             # ✨ 记忆系统抽象基类
-│       └── short_term.py       # ✨ 短期记忆（自动裁剪）
+│       ├── short_term.py       # ✨ 短期记忆（自动裁剪）
+│       └── persistent.py       # ✨ 持久化存储（JSON 文件）
 ├── agents/
 │   ├── __init__.py
+│   ├── config.py              # ✨ AgentConfig 配置类
 │   └── simple.py               # ✨ SimpleAgent 实现
 ├── demos/
 │   └── chat_demo.py            # ✨ 交互式聊天 Demo
@@ -100,7 +102,7 @@ python demos/chat_demo.py
 pytest tests/ -v
 
 # 只测试 Phase 1（Agent + Memory）
-pytest tests/test_memory.py tests/test_simple_agent.py -v
+pytest tests/test_memory.py tests/test_simple_agent.py tests/test_event_system.py -v
 ```
 
 ## 💡 核心概念
@@ -129,9 +131,20 @@ Message(role=Role.USER, content="你好")
 ```python
 from core.llm.factory import create_llm
 from agents.simple import SimpleAgent
+from agents.config import AgentConfig
 
 llm = create_llm("ollama", model="qwen3.5:4b")
-agent = SimpleAgent(llm, system_prompt="你是一个有用的助手")
+
+# 方式1：使用配置类（推荐）
+config = AgentConfig(
+    enable_stream_fallback=True,
+    max_memory_messages=100,
+    system_prompt="你是一个有用的助手"
+)
+agent = SimpleAgent(llm, config=config)
+
+# 方式2：直接传参（兼容旧方式）
+agent = SimpleAgent(llm, max_memory_messages=100)
 
 # 同步对话
 response = agent.chat("你好！")
@@ -154,16 +167,87 @@ agent.clear_history()
 
 ```python
 from core.memory.short_term import ShortTermMemory
+from core.memory.persistent import PersistentMemory
 
-memory = ShortTermMemory(max_messages=50)  # 最多保留 50 条消息
+# 短期记忆（内存中，程序结束丢失）
+memory = ShortTermMemory(max_messages=50)
 
-# 自动裁剪策略：
-# - 保留所有 SYSTEM 消息
-# - 保留最近的非 SYSTEM 消息
-# - 超出限制时移除最旧的非 SYSTEM 消息
+# 持久化存储（保存到文件，重启后可恢复）
+memory = PersistentMemory(
+    max_messages=100,
+    storage_path="./my_chat.json"
+)
+
+# 保存到文件
+memory.save()
+
+# 从文件加载
+memory.load()
 ```
 
-### 5. 思考模式（Think Mode）
+### 5. AgentConfig 统一配置
+
+```python
+from agents.config import AgentConfig
+
+config = AgentConfig(
+    enable_stream_fallback=False,   # 关闭流式回退
+    max_memory_messages=100,      # 最大消息数
+    system_prompt="You are helpful"  # 系统提示词
+)
+
+agent = SimpleAgent(llm, config=config)
+```
+
+### 6. PersistentMemory 持久化存储
+
+```python
+from core.memory.persistent import PersistentMemory
+
+memory = PersistentMemory(max_messages=100)
+memory.save()  # 保存到 ~/.milo-agent/memory.json
+memory.load()  # 从文件加载
+```
+
+**特性**：
+- 继承 ShortTermMemory，保留所有原有功能
+- `save()`: 保存到 JSON 文件
+- `load()`: 从文件加载，返回消息数
+- 添加消息时自动保存
+- 清空时删除存储文件
+
+### 7. 事件系统
+
+```python
+from agents.simple import SimpleAgent, AgentEvent
+
+# 注册事件处理器
+agent.on(AgentEvent.BEFORE_CHAT, lambda **kwargs: print(f"Before: {kwargs}"))
+agent.on(AgentEvent.AFTER_CHAT, lambda response: print(f"Response: {response[:50]}"))
+agent.on(AgentEvent.STREAM_CHUNK, lambda chunk: print(chunk, end="", flush=True))
+
+# 支持的事件类型
+# BEFORE_CHAT      - 发送输入前
+# AFTER_CHAT       - 接收回复后
+# STREAM_START     - 流式开始
+# STREAM_CHUNK     - 每个流块
+# STREAM_END       - 流式结束
+# MEMORY_PRUNED   - 记忆裁剪时
+```
+
+### 8. 流式回退机制
+
+```python
+# 自动启用（默认）
+agent = SimpleAgent(llm)
+
+# 手动关闭
+agent = SimpleAgent(llm, enable_stream_fallback=False)
+```
+
+当流式 API 失败时，自动回退到异步聊天模式，保证可用性。
+
+### 9. 思考模式（Think Mode）
 
 Qwen3 等模型支持思考模式：
 - **开启** (`think=True`)：模型先内部推理，再输出答案（质量高，速度慢）
