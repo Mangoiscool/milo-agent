@@ -91,7 +91,12 @@ class SimpleAgent:
             effective_config = config
 
         self.llm = llm
-        self.memory = memory or ShortTermMemory(effective_config.max_memory_messages)
+        # For streaming, use auto_save=False to avoid excessive file I/O
+        if memory is None:
+            self.memory = ShortTermMemory(effective_config.max_memory_messages)
+        else:
+            # Preserve provided memory instance (don't re-create it)
+            self.memory = memory
         self.system_prompt = effective_config.system_prompt
         self.enable_stream_fallback = effective_config.enable_stream_fallback
         self.config = effective_config
