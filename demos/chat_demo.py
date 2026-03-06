@@ -53,14 +53,29 @@ def select_provider():
 
 
 def get_api_key(provider: str) -> str:
-    """Get API key from user (if needed)."""
+    """Get API key from user (if needed).
+
+    Args:
+        provider: LLM provider name
+
+    Returns:
+        API key string (or empty string if not needed)
+    """
     if provider == "ollama":
         return None
-    
+
+    # 尝试从环境变量读取
+    env_var_name = f"{provider.upper()}_API_KEY"
+    import os
+    api_key = os.getenv(env_var_name)
+
+    if api_key:
+        return api_key
+
     print(f"\nEnter your {provider.upper()} API key:")
     print("(You can also set it via environment variable later)")
     api_key = input("API key: ").strip()
-    
+
     return api_key
 
 
