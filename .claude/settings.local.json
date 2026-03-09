@@ -17,7 +17,32 @@
       "Bash(git config user.name \"Claude\")",
       "Bash(git config user.email \"noreply@anthropic.com\")",
       "Bash(git add README.md)",
-      "Bash(git config user.name \"Mango\")"
+      "Bash(git config user.name \"Mango\")",
+      "Bash(python -m pytest tests/test_factory.py::TestCreateLLM::test_think_parameter -v)",
+      "Bash(python -c \"from core.llm.factory import create_llm; llm = create_llm\\(''ollama'', think=True\\); print\\(f''think={llm.think}''\\)\")",
+      "Bash(uv run pytest tests/test_factory.py::TestCreateLLM::test_think_parameter -v)",
+      "Bash(conda run -n milo-agent pytest tests/test_factory.py::TestCreateLLM::test_think_parameter -v)",
+      "Bash(conda run -n milo-agent python -m cli --help)",
+      "Bash(conda run -n milo-agent python -m cli --no-think \"你好，简单介绍一下 Python\")",
+      "Bash(conda run -n milo-agent python -m cli --think \"你好，简单介绍一下 Python\")",
+      "Bash(git add cli.py GETTING_STARTED.md config/settings.yaml tests/test_factory.py)",
+      "Bash(git push origin main)",
+      "Bash(conda run -n milo-agent python tests/test_chat_demo.py)",
+      "Bash(git add agents/ core/memory/ demos/ tests/test_chat_demo.py tests/test_memory.py tests/test_simple_agent.py)",
+      "Bash(GIT_SEQUENCE_EDITOR=\"sed -i '''' ''s/^pick dc7277c/edit dc7277c/''\" git rebase -i HEAD~2)",
+      "Bash(git stash)",
+      "Bash(git rebase -i HEAD~2)",
+      "Bash(conda run -n milo-agent python tests/test_event_system.py)",
+      "Bash(conda run -n milo-agent pytest tests/test_simple_agent.py -v)",
+      "Bash(git add agents/simple.py tests/test_event_system.py)",
+      "Bash(conda run -n milo-agent pytest tests/test_simple_agent.py tests/test_memory.py -v)",
+      "Bash(conda run -n milo-agent pytest tests/test_simple_agent.py tests/test_memory.py -v --tb=short)",
+      "Bash(git add agents/__init__.py agents/simple.py agents/config.py core/memory/persistent.py)",
+      "Bash(git add README.md GETTING_STARTED.md)",
+      "Bash(git add agents/simple.py)",
+      "Bash(git add demos/chat_demo.py)",
+      "Bash(git add agents/config.py core/llm/providers/api.py core/llm/providers/ollama.py core/memory/persistent.py)",
+      "Bash(git push origin main --force)"
     ]
   }
 }

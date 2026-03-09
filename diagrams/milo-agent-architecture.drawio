@@ -1,0 +1,187 @@
+<mxGraphModel dx="1422" dy="794" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    
+    <!-- Title -->
+    <mxCell id="2" value="Milo Agent Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="500" y="20" width="400" height="40" as="geometry"/>
+    </mxCell>
+    
+    <!-- Layer Labels -->
+    <mxCell id="3" value="用户层" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="40" y="100" width="80" height="30" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="4" value="Agent 层" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="40" y="200" width="80" height="30" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="5" value="LLM 层" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="40" y="340" width="80" height="30" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="6" value="工具层" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="40" y="500" width="80" height="30" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="7" value="记忆层" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="40" y="660" width="80" height="30" as="geometry"/>
+    </mxCell>
+    
+    <!-- User Layer - CLI -->
+    <mxCell id="10" value="CLI&#xa;(cli.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="160" y="90" width="120" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="11" value="Demo&#xa;(demos/)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="320" y="90" width="120" height="50" as="geometry"/>
+    </mxCell>
+    
+    <!-- Agent Layer -->
+    <mxCell id="20" value="SimpleAgent&#xa;agents/simple.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="400" y="180" width="200" height="60" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="21" value="AgentConfig&#xa;agents/config.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="660" y="180" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="22" value="Event System&#xa;AgentEvent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="860" y="180" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <!-- LLM Layer -->
+    <mxCell id="30" value="BaseLLM&#xa;(abstract)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="400" y="320" width="200" height="60" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="31" value="OpenAICompatibleLLM&#xa;(Qwen, GLM, DeepSeek)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="160" y="420" width="180" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="32" value="OllamaLLM&#xa;(Local Models)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="400" y="420" width="180" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="33" value="ToolDefinition&#xa;ToolCall, ToolResult" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="640" y="320" width="160" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="34" value="Message, Role&#xa;LLMResponse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="860" y="320" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <!-- Tool Layer -->
+    <mxCell id="40" value="ToolRegistry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="400" y="490" width="200" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="41" value="BaseTool&#xa;(abstract)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="160" y="570" width="120" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="42" value="CalculatorTool" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="320" y="570" width="120" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="43" value="Custom Tools&#xa;(Future)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="480" y="570" width="120" height="50" as="geometry"/>
+    </mxCell>
+    
+    <!-- Memory Layer -->
+    <mxCell id="50" value="BaseMemory&#xa;(abstract)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="400" y="650" width="200" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="51" value="ShortTermMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="160" y="740" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="52" value="PersistentMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="340" y="740" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <mxCell id="53" value="LongTermMemory&#xa;(Future)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="520" y="740" width="140" height="50" as="geometry"/>
+    </mxCell>
+    
+    <!-- Connections -->
+    <!-- CLI/Demo to Agent -->
+    <mxCell id="60" value="" style="endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="10" target="20">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="61" value="" style="endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="11" target="20">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- Agent to Config/Events -->
+    <mxCell id="62" value="" style="endArrow=block;endFill=1;strokeColor=#d6b656;strokeWidth=1;" edge="1" parent="1" source="20" target="21">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="63" value="" style="endArrow=block;endFill=1;strokeColor=#d6b656;strokeWidth=1;" edge="1" parent="1" source="20" target="22">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- Agent to LLM -->
+    <mxCell id="64" value="chat()&#xa;chat_with_tools()" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="20" target="30">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- LLM inheritance -->
+    <mxCell id="65" value="implements" style="endArrow=block;endFill=0;strokeColor=#82b366;strokeWidth=1;dashed=1;fontSize=10;" edge="1" parent="1" source="31" target="30">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="66" value="implements" style="endArrow=block;endFill=0;strokeColor=#82b366;strokeWidth=1;dashed=1;fontSize=10;" edge="1" parent="1" source="32" target="30">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- Agent to ToolRegistry -->
+    <mxCell id="67" value="execute()" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="20" target="40">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="700" y="210"/>
+          <mxPoint x="700" y="515"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    
+    <!-- ToolRegistry to Tools -->
+    <mxCell id="68" value="register" style="endArrow=block;endFill=0;strokeColor=#9673a6;strokeWidth=1;dashed=1;fontSize=10;" edge="1" parent="1" source="40" target="41">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="69" value="" style="endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=1;" edge="1" parent="1" source="41" target="42">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- Agent to Memory -->
+    <mxCell id="70" value="add()&#xa;get_all()" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="20" target="50">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="330" y="210"/>
+          <mxPoint x="330" y="675"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    
+    <!-- Memory inheritance -->
+    <mxCell id="71" value="implements" style="endArrow=block;endFill=0;strokeColor=#b85450;strokeWidth=1;dashed=1;fontSize=10;" edge="1" parent="1" source="51" target="50">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="72" value="implements" style="endArrow=block;endFill=0;strokeColor=#b85450;strokeWidth=1;dashed=1;fontSize=10;" edge="1" parent="1" source="52" target="50">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    
+    <!-- Legend -->
+    <mxCell id="80" value="Phase 1 ✅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="100" width="100" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="81" value="Phase 2 ✅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="140" width="100" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="82" value="Future 🔜" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="180" width="100" height="30" as="geometry"/>
+    </mxCell>
+    
+  </root>
+</mxGraphModel>
