@@ -47,11 +47,25 @@ demos/
 - **AgentConfig**：统一配置管理
 - **PersistentMemory**：对话历史保存/加载
 
-### 🔜 Phase 2 - 工具调用
+### ✅ Phase 2 - 工具调用
 ```
-core/
-├── planner/         # 任务规划器
-└── tools/           # 工具调用
+core/tools/
+├── base.py           # 工具抽象基类
+├── registry.py       # 工具注册表
+├── builtin/
+│   ├── calculator.py # 计算器
+│   ├── weather.py    # 天气查询
+│   ├── web_search.py # 网络搜索
+│   ├── file_operations.py # 文件操作
+│   └── code_execution.py # 代码执行
+├── mcp.py           # MCP (Model Context Protocol) 支持
+└── mcp_example.py   # MCP 使用示例
+
+webui/
+├── server.py        # FastAPI Web 服务器
+├── launch.py        # 启动脚本
+└── static/
+    └── index.html   # Web UI 前端
 ```
 
 ### 🔜 Phase 3 - Browser Agent
@@ -96,7 +110,26 @@ python -m cli -p glm -k xxx.xxx "写个快排"
 python -m cli -p deepseek -k sk-xxx "解释一下量子计算"
 ```
 
-### 3. 运行示例
+### 3. Web UI 界面
+
+启动 Web UI 服务器（需要安装额外依赖）：
+
+```bash
+# 安装 Web UI 依赖
+pip install 'milo-agent[webui]'
+# 或使用 conda
+conda install -n milo-agent fastapi uvicorn websockets
+
+# 启动 Web UI
+python -m cli webui
+
+# 自定义端口
+python -m cli webui --port 8080
+```
+
+访问 `http://localhost:8000` 即可使用图形化界面。
+
+### 4. 运行示例
 
 #### 基础示例
 ```bash
@@ -182,7 +215,7 @@ response = agent.chat("Hello")
 
 - [x] **Phase 0** - LLM 抽象层
 - [x] **Phase 1** - 最小 Agent（事件系统、配置类、持久化）
-- [ ] **Phase 2** - 工具调用（Function Calling）
+- [x] **Phase 2** - 工具调用（Function Calling）+ Web UI
 - [ ] **Phase 3** - Browser Agent（Playwright + DOM）
 - [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思）
 
@@ -197,6 +230,12 @@ response = agent.chat("Hello")
   - `web_search.py` - 网络搜索工具示例
 - **`examples/advanced/`** - 高级功能示例
   - `complete_agent.py` - 完整 Agent 功能演示
+
+**Web UI**:
+- **`webui/`** - Web 界面
+  - `server.py` - FastAPI 服务器
+  - `static/index.html` - 前端页面
+  - [使用文档](webui/README.md)
 
 ## License
 

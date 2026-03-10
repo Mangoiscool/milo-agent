@@ -57,7 +57,6 @@ def create_demo_agent(llm_provider="qwen"):
 
     # 根据 provider 创建 LLM
     if llm_provider == "ollama":
-        console.print("[yellow]警告：Ollama 不支持工具调用，将使用普通对话模式[/yellow]")
         try:
             llm = create_llm("ollama", model="qwen3.5:4b")
             # 不启用工具调用
@@ -100,10 +99,6 @@ def demo(llm_provider="qwen", test_inputs=None):
     if agent is None:
         return
 
-    # 如果没有提供测试输入且是 ollama，自动退出
-    if not test_inputs and llm_provider == "ollama":
-        console.print("[yellow]提示：Ollama 未运行，跳过交互模式[/yellow]")
-        return
 
     if not test_inputs:
         # 交互模式

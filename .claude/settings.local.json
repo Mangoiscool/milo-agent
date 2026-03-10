@@ -54,7 +54,11 @@
       "Bash(python examples/advanced/complete_agent.py --provider ollama \"你好，介绍一下你自己\")",
       "Bash(python examples/advanced/complete_agent.py --provider ollama \"你好\")",
       "Bash(python examples/advanced/complete_agent.py --provider qwen)",
-      "Bash(python examples/advanced/complete_agent.py --provider ollama)"
+      "Bash(python examples/advanced/complete_agent.py --provider ollama)",
+      "Bash(source ~/.zshrc)",
+      "Bash(conda install:*)",
+      "Bash(python -c \"import uvicorn; import websockets; import fastapi; print\\(''FastAPI:'', fastapi.__version__, ''Uvicorn:'', uvicorn.__version__, ''WebSockets:'', websockets.__version__\\)\")",
+      "Bash(conda run:*)"
     ]
   }
 }
