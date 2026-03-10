@@ -88,7 +88,7 @@ python -m cli --no-think "简单介绍一下 Python"
 python -m cli --think "什么是递归？"
 
 # 指定模型
-python -m cli --model llama3:8b "你好"
+python -m cli --model qwen3.5:4b "你好"
 
 # 使用 API 提供者
 python -m cli -p qwen -k sk-xxx "你好"
@@ -96,13 +96,25 @@ python -m cli -p glm -k xxx.xxx "写个快排"
 python -m cli -p deepseek -k sk-xxx "解释一下量子计算"
 ```
 
-### 3. 运行交互式 Demo（多轮对话）
+### 3. 运行示例
 
+#### 基础示例
 ```bash
-python demos/chat_demo.py
+# 交互式聊天 Demo
+python examples/basic/chat.py
+
+# 工具使用 Demo
+python examples/tools/tool_demo.py
 ```
 
-选择 Provider（推荐 Ollama 本地），开始多轮对话。
+#### 高级示例
+```bash
+# 完整 Agent 功能演示
+python examples/advanced/complete_agent.py
+
+# 网络搜索工具演示
+python examples/tools/web_search.py
+```
 
 ### 4. 运行测试
 
@@ -173,6 +185,18 @@ response = agent.chat("Hello")
 - [ ] **Phase 2** - 工具调用（Function Calling）
 - [ ] **Phase 3** - Browser Agent（Playwright + DOM）
 - [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思）
+
+## 示例代码
+
+项目包含丰富的示例代码，按功能分类在 `examples/` 目录：
+
+- **`examples/basic/`** - 基础功能示例
+  - `chat.py` - 交互式聊天演示
+- **`examples/tools/`** - 工具使用示例
+  - `tool_demo.py` - 工具调用演示
+  - `web_search.py` - 网络搜索工具示例
+- **`examples/advanced/`** - 高级功能示例
+  - `complete_agent.py` - 完整 Agent 功能演示
 
 ## License
 

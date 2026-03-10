@@ -42,7 +42,19 @@
       "Bash(git add agents/simple.py)",
       "Bash(git add demos/chat_demo.py)",
       "Bash(git add agents/config.py core/llm/providers/api.py core/llm/providers/ollama.py core/memory/persistent.py)",
-      "Bash(git push origin main --force)"
+      "Bash(git push origin main --force)",
+      "Bash(python -m py_compile /Users/mango/Projects/milo-agent/examples/advanced/complete_agent.py)",
+      "Bash(python -m py_compile /Users/mango/Projects/milo-agent/examples/basic/chat.py)",
+      "Bash(python -m py_compile /Users/mango/Projects/milo-agent/examples/tools/tool_demo.py)",
+      "Bash(python -m py_compile /Users/mango/Projects/milo-agent/examples/tools/web_search.py)",
+      "Bash(python -c \":*)",
+      "Bash(python examples/advanced/complete_agent.py)",
+      "Bash(python examples/advanced/complete_agent.py \"你好，请自我介绍一下\")",
+      "Bash(python examples/advanced/complete_agent.py --help)",
+      "Bash(python examples/advanced/complete_agent.py --provider ollama \"你好，介绍一下你自己\")",
+      "Bash(python examples/advanced/complete_agent.py --provider ollama \"你好\")",
+      "Bash(python examples/advanced/complete_agent.py --provider qwen)",
+      "Bash(python examples/advanced/complete_agent.py --provider ollama)"
     ]
   }
 }

@@ -5,11 +5,13 @@
 - 注册模式：集中管理工具
 - 工具查找和执行
 - 错误处理
+- MCP 服务器自动发现
 """
 
 from typing import Dict, List, Optional
 
 from .base import BaseTool, ToolResult
+from .mcp import HTTPMCPClient, MCPTool
 from core.llm.base import ToolDefinition
 from core.logger import get_logger
 
@@ -149,6 +151,91 @@ class ToolRegistry:
                 is_error=True,
                 error_message=f"Tool execution failed: {str(e)}"
             )
+    
+    # ═══════════════════════════════════════════════════════════════
+    # MCP 支持
+    # ═══════════════════════════════════════════════════════════════
+    
+    def register_mcp_server(
+        self, 
+        server_url: str, 
+        prefix: Optional[str] = None,
+        skip_existing: bool = True
+    ) -> int:
+        """
+        自动发现并注册 MCP 服务器的所有工具
+        
+        Args:
+            server_url: MCP 服务器地址（如 http://localhost:3000/mcp）
+            prefix: 工具名称前缀（避免命名冲突），如 "mcp_weather"
+            skip_existing: 如果工具名称已存在，是否跳过（True）或报错（False）
+        
+        Returns:
+            成功注册的工具数量
+        
+        使用方法：
+            registry.register_mcp_server("http://localhost:3000/mcp")
+            # 或带前缀
+            registry.register_mcp_server("http://localhost:3000/mcp", prefix="meteo")
+        """
+        client = HTTPMCPClient(server_url)
+        tool_infos = client.list_tools()
+        
+        if not tool_infos:
+            self.logger.warning(f"No tools found at MCP server: {server_url}")
+            return 0
+        
+        registered = 0
+        for tool_info in tool_infos:
+            original_name = tool_info.get("name", "")
+            
+            # 应用前缀
+            if prefix:
+                tool_info = {**tool_info, "name": f"{prefix}_{original_name}"}
+            
+            tool_name = tool_info.get("name", "")
+            
+            # 检查是否已存在
+            if tool_name in self._tools:
+                if skip_existing:
+                    self.logger.debug(f"Skipping existing tool: {tool_name}")
+                    continue
+                else:
+                    raise ValueError(f"Tool '{tool_name}' already registered")
+            
+            # 创建并注册 MCP 工具
+            mcp_tool = MCPTool(client, tool_info)
+            self._tools[tool_name] = mcp_tool
+            self.logger.info(f"Registered MCP tool: {tool_name} (from {server_url})")
+            registered += 1
+        
+        return registered
+    
+    def register_mcp_tools(self, tools: List[MCPTool], skip_existing: bool = True) -> int:
+        """
+        批量注册 MCP 工具实例
+        
+        Args:
+            tools: MCPTool 实例列表
+            skip_existing: 如果工具名称已存在，是否跳过
+        
+        Returns:
+            成功注册的工具数量
+        """
+        registered = 0
+        for tool in tools:
+            if tool.name in self._tools:
+                if skip_existing:
+                    self.logger.debug(f"Skipping existing tool: {tool.name}")
+                    continue
+                else:
+                    raise ValueError(f"Tool '{tool.name}' already registered")
+            
+            self._tools[tool.name] = tool
+            self.logger.info(f"Registered MCP tool: {tool.name}")
+            registered += 1
+        
+        return registered
     
     # ═══════════════════════════════════════════════════════════════
     # 辅助方法

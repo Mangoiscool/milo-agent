@@ -9,7 +9,7 @@
    export QWEN_API_KEY="your-api-key"
    
 2. 运行演示：
-   python demos/tool_demo.py
+   python examples/tools/tool_demo.py
 """
 
 import asyncio
@@ -17,7 +17,7 @@ import os
 import sys
 
 # 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from core.llm.factory import create_llm
 from core.tools import CalculatorTool, DateTimeTool, RandomTool
@@ -82,11 +82,7 @@ def demo_basic_tools():
         response = agent.chat_with_tools(user_input)
         print(f"🤖 Agent: {response}")
         print()
-        llm=llm,
-        system_prompt="你是一个有用的助手。当需要计算时，使用计算器工具。",
-        tools=[CalculatorTool()]
-    )
-    
+            
     # 3. 注册事件监听
     def on_tool_call(name, arguments):
         print(f"🔧 调用工具: {name}({arguments})")
