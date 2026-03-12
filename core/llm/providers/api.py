@@ -317,11 +317,11 @@ class OpenAICompatibleLLM(BaseLLM):
 MODEL_CONFIGS = {
     "qwen": {
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "default_model": "qwen-plus",
+        "default_model": "qwen3.5-flash",
     },
     "glm": {
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "default_model": "glm-4",
+        "default_model": "glm-4.5-air",
     },
     "deepseek": {
         "base_url": "https://api.deepseek.com/v1",

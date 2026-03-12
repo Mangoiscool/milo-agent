@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 from .base import BaseTool, ToolResult
 from .mcp import HTTPMCPClient, MCPTool
+from .retry import RetryConfig, is_retryable_error
 from core.llm.base import ToolDefinition
 from core.logger import get_logger
 
@@ -19,28 +20,35 @@ from core.logger import get_logger
 class ToolRegistry:
     """
     工具注册中心
-    
+
     职责：
     1. 注册/注销工具
     2. 按名称查找工具
     3. 获取所有工具定义（给 LLM 用）
-    4. 执行工具调用
-    
+    4. 执行工具调用（带重试）
+
     使用方法：
         registry = ToolRegistry()
         registry.register(CalculatorTool())
         registry.register(WeatherTool())
-        
+
         # 获取所有工具定义（传给 LLM）
         tools = registry.get_all_definitions()
-        
+
         # 执行工具
         result = registry.execute("calculator", expression="2 + 3")
     """
-    
-    def __init__(self):
+
+    def __init__(self, retry_config: Optional[RetryConfig] = None):
+        """
+        初始化工具注册中心
+
+        Args:
+            retry_config: 重试配置，为 None 时使用默认配置
+        """
         self._tools: Dict[str, BaseTool] = {}
         self.logger = get_logger(self.__class__.__name__)
+        self._retry_config = retry_config or RetryConfig()
     
     # ═══════════════════════════════════════════════════════════════
     # 工具管理
@@ -112,18 +120,19 @@ class ToolRegistry:
     
     def execute(self, name: str, **kwargs) -> ToolResult:
         """
-        执行工具
-        
+        执行工具（带重试）
+
         Args:
             name: 工具名称
             **kwargs: 工具参数
-        
+
         Returns:
             执行结果
-        
+
         注意：
         - 工具不存在时返回错误结果
         - 工具执行异常时返回错误结果
+        - 可重试错误会自动重试
         """
         tool = self._tools.get(name)
         if not tool:
@@ -133,23 +142,39 @@ class ToolRegistry:
                 is_error=True,
                 error_message=f"Tool '{name}' not found. Available tools: {', '.join(self.list_tools())}"
             )
-        
-        try:
+
+        def _execute():
+            """内部执行函数"""
             self.logger.info(f"Executing tool: {name} with args: {kwargs}")
             result = tool.execute(**kwargs)
-            
+
             if result.is_error:
                 self.logger.warning(f"Tool {name} failed: {result.error_message}")
             else:
                 self.logger.debug(f"Tool {name} result: {result.content[:100]}...")
-            
+
             return result
+
+        # 应用重试
+        try:
+            if self._retry_config.max_retries > 0:
+                # 对于 ToolResult 返回的工具，我们需要特殊处理
+                # 重试应该处理执行异常，而不是检查 ToolResult.is_error
+                from .retry import retry_tool
+
+                @retry_tool(config=self._retry_config)
+                def _execute_with_retry():
+                    return _execute()
+
+                return _execute_with_retry()
+            else:
+                return _execute()
         except Exception as e:
-            self.logger.error(f"Tool {name} execution error: {e}")
+            self.logger.error(f"Tool {name} execution error after retries: {e}")
             return ToolResult(
                 content="",
                 is_error=True,
-                error_message=f"Tool execution failed: {str(e)}"
+                error_message=f"Tool execution failed after retries: {str(e)}"
             )
     
     # ═══════════════════════════════════════════════════════════════

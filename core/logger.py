@@ -4,12 +4,15 @@
 学习重点：
 - 使用 logging 模块而非 print，便于生产环境管理
 - 支持日志级别、格式化、文件输出
+- 支持结构化日志（JSON 格式）
 """
 
 import logging
 import sys
 from pathlib import Path
 from typing import Optional
+
+from config.settings import settings
 
 
 def setup_logger(
@@ -37,9 +40,14 @@ def setup_logger(
     if logger.handlers:
         return logger
 
+    # 检查是否使用结构化日志
+    if settings().use_structured_logging:
+        from core.structured_logger import setup_structured_logger
+        return setup_structured_logger(name, level, log_file)
+
     # 默认格式：时间 + 级别 + 名称 + 消息
     if format_string is None:
-        format_string = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+        format_string = settings().log_format or "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 
     formatter = logging.Formatter(format_string)
 
@@ -53,7 +61,7 @@ def setup_logger(
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler = logging.FileHandler(log_path, encoding="utf-8")
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
@@ -65,6 +73,8 @@ def get_logger(name: str) -> logging.Logger:
     """
     获取已配置的日志记录器
 
+    根据配置自动选择文本或结构化日志
+
     使用示例：
         from core.logger import get_logger
 
@@ -74,6 +84,9 @@ def get_logger(name: str) -> logging.Logger:
     """
     # 确保根 logger 已配置
     if not logging.getLogger("milo").handlers:
-        setup_logger("milo")
-
+        setup_logger(
+            "milo",
+            level=getattr(logging, settings().log_level),
+            log_file=settings().log_file,
+        )
     return logging.getLogger(f"milo.{name}")

@@ -91,7 +91,8 @@ class SimpleAgent:
             effective_config = AgentConfig(
                 enable_stream_fallback=enable_stream_fallback,
                 max_memory_messages=50,
-                system_prompt=system_prompt
+                system_prompt=system_prompt,
+                use_intelligent_pruning=False
             )
         else:
             effective_config = config
@@ -99,7 +100,10 @@ class SimpleAgent:
         self.llm = llm
         # For streaming, use auto_save=False to avoid excessive file I/O
         if memory is None:
-            self.memory = ShortTermMemory(effective_config.max_memory_messages)
+            self.memory = ShortTermMemory(
+                effective_config.max_memory_messages,
+                use_intelligent_pruning=effective_config.use_intelligent_pruning
+            )
         else:
             # Preserve provided memory instance (don't re-create it)
             self.memory = memory

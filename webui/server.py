@@ -221,12 +221,41 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
             agent = agent_manager.create_agent(session_id=session_id, provider=provider)
             await manager.send(session_id, {
                 "type": "info",
-                "message": f"使用 {provider} 模型"
+                "message": f"使用 {provider} 模型",
+                "provider": provider
             })
 
         while True:
             data = await websocket.receive_json()
+
+            # 处理配置消息
+            if data.get("type") == "config":
+                provider = data.get("provider", "ollama")
+                api_key = data.get("api_key")
+                try:
+                    # 重新创建 Agent 使用新的配置
+                    agent_manager.remove_agent(session_id)
+                    agent = agent_manager.create_agent(
+                        session_id=session_id,
+                        provider=provider,
+                        api_key=api_key
+                    )
+                    await manager.send(session_id, {
+                        "type": "info",
+                        "message": f"已切换到 {provider} 模型",
+                        "provider": provider
+                    })
+                    await manager.send(session_id, {"type": "config_ack"})
+                except Exception as e:
+                    await manager.send(session_id, {
+                        "type": "error",
+                        "message": f"切换模型失败: {str(e)}"
+                    })
+                continue
+
             message = data.get("message", "")
+            if not message:
+                continue
 
             if not message:
                 continue

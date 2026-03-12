@@ -10,6 +10,9 @@ dependencies = [
     "httpx>=0.25,<0.28",
     "pyyaml>=6.0,<7.0",
     "rich>=13.0,<15.0",  # 美化终端输出
+    "pydantic-settings>=2.0,<3.0",  # .env 文件支持
+    "python-dotenv>=1.0,<2.0",  # .env 文件加载
+    "python-json-logger>=2.0,<4.0",  # JSON 格式日志
 ]
 
 [project.optional-dependencies]
