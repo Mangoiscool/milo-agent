@@ -114,12 +114,24 @@ class AgentManager:
             registry.register(FileReadTool())
             registry.register(CodeExecutionTool())
 
+            # 简化的系统提示词
+            system_prompt = """你是一个有用的 AI 助手。你必须使用可用的工具来回答用户的问题：
+
+- 计算 → calculator 工具
+- 天气查询 → weather 工具
+- 网络搜索 → web_search 工具
+- 读取文件 → file_read 工具
+- 执行代码 → code_execute 工具
+
+重要：
+1. 当用户需要计算、查询天气、搜索等时，必须调用相应工具
+2. 不要自己计算或猜测，使用工具获取准确结果
+3. 直接回答用户的问题，不要介绍自己"""
+
             agent = SimpleAgent(
                 llm,
                 tools=list(registry._tools.values()),
-                config=AgentConfig(
-                    system_prompt="你是一个有用的助手，可以使用各种工具来帮助用户完成任务。"
-                )
+                config=AgentConfig(system_prompt=system_prompt)
             )
 
         self.agents[session_id] = agent
@@ -263,31 +275,57 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
             # 发送用户消息确认
             await manager.send(session_id, {"type": "user", "content": message})
 
+            # 添加用户消息到 memory
+            agent.memory.add(Message(role=Role.USER, content=message))
+
             # 处理对话
             if agent.tool_registry.count() > 0 and hasattr(agent, 'chat_with_tools'):
                 # 有工具支持
                 for iteration in range(10):
                     messages = agent._build_messages()
+
+                    # 调试日志
+                    print(f"[DEBUG] Iteration {iteration}, messages: {len(messages)}")
+                    print(f"[DEBUG] Tools available: {[t.name for t in agent.tool_registry.get_all_definitions()]}")
+
+                    # 打印系统提示词
+                    for msg in messages:
+                        if msg.role.value == "system":
+                            print(f"[DEBUG] System prompt (first 200 chars): {msg.content[:200]}...")
+
+                    # 打印用户消息
+                    for msg in messages:
+                        if msg.role.value == "user":
+                            print(f"[DEBUG] User message: {msg.content}")
+
                     response = agent.llm.chat_with_tools(
                         messages,
                         tools=agent.tool_registry.get_all_definitions()
                     )
 
-                    # 如果有文本内容，发送回复
-                    if response.content:
-                        await manager.send(session_id, {
-                            "type": "assistant",
-                            "content": response.content
-                        })
-
-                    # 如果有工具调用
+                    # 调试日志
+                    print(f"[DEBUG] Response: finish_reason={response.finish_reason}")
+                    print(f"[DEBUG] Response content: {response.content[:100] if response.content else 'empty'}")
+                    print(f"[DEBUG] Tool calls: {len(response.tool_calls) if response.tool_calls else 0}")
                     if response.tool_calls:
-                        # 保存 assistant 消息
+                        for tc in response.tool_calls:
+                            print(f"[DEBUG]   - {tc.name}: {tc.arguments}")
+
+                    # 检查是否有工具调用（只要有 tool_calls 就执行）
+                    if response.tool_calls:
+                        # 保存 assistant 消息（包含 tool_calls）
                         agent.memory.add(Message(
                             role=Role.ASSISTANT,
                             content=response.content or "",
                             tool_calls=response.tool_calls
                         ))
+
+                        # 如果有文本内容，发送回复
+                        if response.content:
+                            await manager.send(session_id, {
+                                "type": "assistant",
+                                "content": response.content
+                            })
 
                         # 执行工具调用
                         for tool_call in response.tool_calls:
@@ -314,8 +352,12 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                                 tool_call_id=tool_call.id
                             ))
                     else:
-                        # 没有工具调用，保存消息并退出循环
+                        # 不需要调用工具，发送最终回复并退出
                         agent.memory.add(Message(role=Role.ASSISTANT, content=response.content))
+                        await manager.send(session_id, {
+                            "type": "assistant",
+                            "content": response.content
+                        })
                         break
             else:
                 # 普通对话

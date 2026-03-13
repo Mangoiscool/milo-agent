@@ -33,6 +33,7 @@ agents/
 core/memory/
 ├── base.py           # 记忆系统抽象基类
 ├── short_term.py     # 短期记忆（自动裁剪）
+│   └── scoring.py   # 消息重要性评分系统（新增）
 └── persistent.py     # 持久化存储（JSON 文件）
 
 demos/
@@ -41,7 +42,7 @@ demos/
 
 **核心概念**：
 - **SimpleAgent**：支持同步/异步/流式对话
-- **Memory**：对话历史管理，自动裁剪策略
+- **Memory**：对话历史管理，自动裁剪策略（支持智能评分）
 - **System Prompt**：自定义 Agent 人设
 - **Event System**：BEFORE_CHAT, AFTER_CHAT, STREAM_START/CHUNK/END
 - **AgentConfig**：统一配置管理
@@ -51,7 +52,8 @@ demos/
 ```
 core/tools/
 ├── base.py           # 工具抽象基类
-├── registry.py       # 工具注册表
+├── registry.py       # 工具注册表（带重试机制）
+│   └── retry.py     # 重试机制（新增）
 ├── builtin/
 │   ├── calculator.py # 计算器
 │   ├── weather.py    # 天气查询
@@ -61,11 +63,18 @@ core/tools/
 ├── mcp.py           # MCP (Model Context Protocol) 支持
 └── mcp_example.py   # MCP 使用示例
 
+config/
+└── settings.py       # 统一配置管理（新增）
+.env.example          # 环境变量模板（新增）
+
 webui/
 ├── server.py        # FastAPI Web 服务器
 ├── launch.py        # 启动脚本
 └── static/
-    └── index.html   # Web UI 前端
+    └── index.html   # Web UI 前端（代码高亮 + 导出功能）
+
+core/
+└── structured_logger.py  # 结构化日志（新增）
 ```
 
 ### 🔜 Phase 3 - Browser Agent
@@ -89,7 +98,17 @@ cd milo-agent
 pip install -e .
 ```
 
-### 2. 使用 CLI（单次对话）
+### 2. 配置环境变量（可选）
+
+```bash
+# 复制配置模板
+cp .env.example .env
+
+# 编辑 .env 文件，设置你的 API keys
+vi .env
+```
+
+### 3. 使用 CLI（单次对话）
 
 ```bash
 # Ollama 本地模型（默认）
@@ -110,7 +129,7 @@ python -m cli -p glm -k xxx.xxx "写个快排"
 python -m cli -p deepseek -k sk-xxx "解释一下量子计算"
 ```
 
-### 3. Web UI 界面
+### 4. Web UI 界面
 
 启动 Web UI 服务器（需要安装额外依赖）：
 
@@ -129,7 +148,12 @@ python -m cli webui --port 8080
 
 访问 `http://localhost:8000` 即可使用图形化界面。
 
-### 4. 运行示例
+**Web UI 新功能**：
+- 🎨 代码高亮（Highlight.js）
+- 📥 对话导出（Markdown/JSON/纯文本）
+- 📋 一键复制代码块
+
+### 5. 运行示例
 
 #### 基础示例
 ```bash
@@ -149,7 +173,7 @@ python examples/advanced/complete_agent.py
 python examples/tools/web_search.py
 ```
 
-### 4. 运行测试
+### 6. 运行测试
 
 ```bash
 # 运行所有测试
@@ -171,7 +195,8 @@ from agents.simple import SimpleAgent
 config = AgentConfig(
     enable_stream_fallback=False,
     max_memory_messages=100,
-    system_prompt="你是一个有用的助手"
+    system_prompt="你是一个有用的助手",
+    use_intelligent_pruning=True  # 新增：启用智能裁剪
 )
 agent = SimpleAgent(llm, config=config)
 
@@ -179,7 +204,7 @@ agent = SimpleAgent(llm, config=config)
 agent = SimpleAgent(llm, max_memory_messages=100)
 ```
 
-### 2. PersistentMemory 持久化
+### 2. 持久化存储
 
 ```python
 from core.memory.persistent import PersistentMemory
@@ -197,7 +222,41 @@ count = memory.load()
 memory = PersistentMemory(storage_path="./my_chat.json")
 ```
 
-### 3. 事件系统
+### 3. 智能消息裁剪
+
+```python
+from agents.config import AgentConfig
+
+# 启用智能裁剪（基于消息重要性评分）
+config = AgentConfig(use_intelligent_pruning=True)
+agent = SimpleAgent(llm, config=config)
+```
+
+**评分因素**：
+- 角色权重：SYSTEM > ASSISTANT > USER > TOOL
+- 内容长度：较长的消息得分更高
+- 时间衰减：最近消息得分更高
+- 关键词：包含"错误"、"重要"等关键词加分
+
+### 4. 工具调用重试机制
+
+工具执行失败时自动重试，支持：
+- 指数退避 + 随机抖动
+- 可重试错误类型自动识别
+- 可配置重试次数和延迟
+
+```python
+from core.tools.retry import RetryConfig
+
+# 自定义重试配置
+config = RetryConfig(
+    max_retries=3,
+    initial_delay=1.0,
+    max_delay=30.0
+)
+```
+
+### 5. 事件系统
 
 ```python
 from agents.simple import SimpleAgent, AgentEvent
@@ -211,6 +270,47 @@ agent.on(AgentEvent.STREAM_CHUNK, lambda chunk: print(chunk, end="", flush=True)
 response = agent.chat("Hello")
 ```
 
+### 6. 结构化日志
+
+```python
+# 在 .env 中启用
+USE_STRUCTURED_LOGGING=true
+
+# 或在代码中
+from config.settings import settings
+settings().use_structured_logging = True
+
+# 使用结构化日志记录上下文
+from core.structured_logger import get_structured_logger
+
+logger = get_structured_logger("MyModule")
+logger_with_context = logger.bind(session_id="abc123", user_id="user_456")
+
+logger_with_context.info("Action completed", action="login", duration=0.123)
+```
+
+### 7. 环境变量配置
+
+项目支持通过 `.env` 文件管理配置：
+
+```bash
+# LLM 配置
+DEFAULT_PROVIDER=ollama
+QWEN_API_KEY=sk-xxx
+GLM_API_KEY=xxx.xxx
+
+# Agent 配置
+MAX_MEMORY_MESSAGES=50
+USE_INTELLIGENT_PRUNING=false
+
+# 日志配置
+LOG_LEVEL=INFO
+USE_STRUCTURED_LOGGING=false
+
+# 工具配置
+TOOL_MAX_RETRIES=3
+```
+
 ## 学习路线
 
 - [x] **Phase 0** - LLM 抽象层
@@ -218,6 +318,31 @@ response = agent.chat("Hello")
 - [x] **Phase 2** - 工具调用（Function Calling）+ Web UI
 - [ ] **Phase 3** - Browser Agent（Playwright + DOM）
 - [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思）
+
+## 新增功能（v0.2.0）
+
+### 🧠 内存优化
+- 智能消息裁剪：基于重要性评分，保留关键信息
+- 评分系统：综合考虑角色、长度、时间、关键词等因素
+
+### 🔄 错误处理
+- 工具调用重试机制：指数退避 + 随机抖动
+- 可重试错误自动识别：网络超时、连接错误、速率限制等
+
+### ⚙️ 配置管理
+- `.env` 文件支持：统一环境变量管理
+- 配置模板：`.env.example` 提供完整配置示例
+- 多环境支持：开发、测试、生产环境配置分离
+
+### 📝 日志优化
+- 结构化日志：JSON 格式，便于日志收集和分析
+- 上下文绑定：记录会话 ID、用户 ID 等上下文信息
+- 灵活配置：支持文本/JSON 两种格式切换
+
+### 🎨 Web UI 增强
+- 代码高亮：集成 Highlight.js，支持多种编程语言
+- 对话导出：支持 Markdown、JSON、纯文本三种格式
+- 复制按钮：代码块一键复制
 
 ## 示例代码
 

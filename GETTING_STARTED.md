@@ -7,13 +7,16 @@ milo-agent/
 ├── pyproject.toml              # 项目配置
 ├── README.md                   # 项目文档
 ├── GETTING_STARTED.md          # 本文档
-├── cli.py                      # ✨ 命令行工具
+├── .env.example               # 环境变量模板（新增）
+├── cli.py                     # ✨ 命令行工具
 ├── __init__.py
 ├── config/
-│   └── settings.yaml           # 配置文件（支持环境变量）
+│   ├── settings.yaml           # YAML 配置文件
+│   └── settings.py            # 统一配置管理（新增）
 ├── core/
 │   ├── __init__.py
-│   ├── logger.py               # ✨ 日志模块
+│   ├── logger.py               # ✨ 日志模块（支持结构化日志）
+│   ├── structured_logger.py     # ✨ 结构化日志（新增）
 │   ├── llm/
 │   │   ├── __init__.py
 │   │   ├── base.py             # ✨ LLM 抽象基类
@@ -25,11 +28,12 @@ milo-agent/
 │       ├── __init__.py
 │       ├── base.py             # ✨ 记忆系统抽象基类
 │       ├── short_term.py       # ✨ 短期记忆（自动裁剪）
+│       ├── scoring.py          # ✨ 消息评分系统（新增）
 │       └── persistent.py       # ✨ 持久化存储（JSON 文件）
 ├── agents/
 │   ├── __init__.py
 │   ├── config.py              # ✨ AgentConfig 配置类
-│   └── simple.py               # ✨ SimpleAgent 实现
+│   └── simple.py             # ✨ SimpleAgent 实现
 ├── demos/
 │   └── chat_demo.py            # ✨ 交互式聊天 Demo
 └── tests/
@@ -58,7 +62,24 @@ conda activate milo-agent
 pip install -e .
 ```
 
-### 2. CLI 单次对话
+### 2. 配置环境变量（推荐）
+
+```bash
+# 复制配置模板
+cp .env.example .env
+
+# 编辑 .env 文件，设置你的 API keys
+vi .env
+```
+
+**推荐配置项**：
+- `DEFAULT_PROVIDER`: 选择默认的 LLM 提供者
+- `QWEN_API_KEY` / `GLM_API_KEY` / `DEEPSEEK_API_KEY`: API 密钥
+- `MAX_MEMORY_MESSAGES`: 最大消息数量
+- `USE_INTELLIGENT_PRUNING`: 是否启用智能裁剪
+- `USE_STRUCTURED_LOGGING`: 是否使用 JSON 格式日志
+
+### 3. CLI 单次对话
 
 ```bash
 # 使用 Ollama 本地模型（默认）
@@ -71,15 +92,15 @@ python -m cli --no-think "简单介绍一下 Python"
 python -m cli --think "什么是递归？"
 
 # 指定模型
-python -m cli --model llama3:8b "你好"
+python -m cli --model qwen3.5:4b "你好"
 
-# 使用 API 提供者
-python -m cli -p qwen -k sk-xxx "你好"
-python -m cli -p glm -k xxx.xxx "写个快排"
-python -m cli -p deepseek -k sk-xxx "解释一下量子计算"
+# 使用 API 提供者（推荐使用 .env 配置）
+python -m cli -p qwen "你好"
+python -m cli -p glm "写个快排"
+python -m cli -p deepseek "解释一下量子计算"
 ```
 
-### 3. 交互式 Demo（多轮对话）
+### 4. 交互式 Demo（多轮对话）
 
 ```bash
 python demos/chat_demo.py
@@ -95,7 +116,26 @@ python demos/chat_demo.py
 - `clear` - 清空记忆
 - `quit` - 退出
 
-### 4. 运行测试
+### 5. Web UI 界面
+
+启动 Web UI 服务器：
+
+```bash
+# 启动 Web UI
+python -m cli webui
+
+# 自定义端口
+python -m cli webui --port 8080
+```
+
+访问 `http://localhost:8000` 即可使用图形化界面。
+
+**Web UI 新功能**：
+- 🎨 代码高亮（Highlight.js）
+- 📥 对话导出（Markdown/JSON/纯文本）
+- 📋 一键复制代码块
+
+### 6. 运行测试
 
 ```bash
 # 运行所有测试
@@ -139,7 +179,8 @@ llm = create_llm("ollama", model="qwen3.5:4b")
 config = AgentConfig(
     enable_stream_fallback=True,
     max_memory_messages=100,
-    system_prompt="你是一个有用的助手"
+    system_prompt="你是一个有用的助手",
+    use_intelligent_pruning=True  # 新增：启用智能裁剪
 )
 agent = SimpleAgent(llm, config=config)
 
@@ -170,7 +211,7 @@ from core.memory.short_term import ShortTermMemory
 from core.memory.persistent import PersistentMemory
 
 # 短期记忆（内存中，程序结束丢失）
-memory = ShortTermMemory(max_messages=50)
+memory = ShortTermMemory(max_messages=50, use_intelligent_pruning=True)  # 新增参数
 
 # 持久化存储（保存到文件，重启后可恢复）
 memory = PersistentMemory(
@@ -192,14 +233,65 @@ from agents.config import AgentConfig
 
 config = AgentConfig(
     enable_stream_fallback=False,   # 关闭流式回退
-    max_memory_messages=100,      # 最大消息数
-    system_prompt="You are helpful"  # 系统提示词
+    max_memory_messages=100,       # 最大消息数
+    system_prompt="You are helpful",  # 系统提示词
+    use_intelligent_pruning=True   # 新增：启用智能裁剪
 )
 
 agent = SimpleAgent(llm, config=config)
 ```
 
-### 6. PersistentMemory 持久化存储
+### 6. 智能消息裁剪
+
+```python
+# 启用智能裁剪（基于消息重要性评分）
+config = AgentConfig(use_intelligent_pruning=True)
+agent = SimpleAgent(llm, config=config)
+```
+
+**评分因素**：
+- 角色权重：SYSTEM > ASSISTANT > USER > TOOL
+- 内容长度：较长的消息得分更高
+- 时间衰减：最近消息得分更高
+- 关键词：包含"错误"、"重要"等关键词加分
+
+### 7. 工具调用重试
+
+```python
+from core.tools.retry import RetryConfig
+
+# 自定义重试配置
+retry_config = RetryConfig(
+    max_retries=3,
+    initial_delay=1.0,
+    max_delay=30.0
+)
+
+# 使用自定义配置
+from core.tools import ToolRegistry
+registry = ToolRegistry(retry_config=retry_config)
+```
+
+### 8. 结构化日志
+
+```python
+# 在 .env 中启用
+USE_STRUCTURED_LOGGING=true
+
+# 或在代码中
+from config.settings import settings
+settings().use_structured_logging = True
+
+# 使用结构化日志记录上下文
+from core.structured_logger import get_structured_logger
+
+logger = get_structured_logger("MyModule")
+logger_with_context = logger.bind(session_id="abc123", user_id="user_456")
+
+logger_with_context.info("Action completed", action="login", duration=0.123)
+```
+
+### 9. PersistentMemory 持久化存储
 
 ```python
 from core.memory.persistent import PersistentMemory
@@ -216,7 +308,7 @@ memory.load()  # 从文件加载
 - 添加消息时自动保存
 - 清空时删除存储文件
 
-### 7. 事件系统
+### 10. 事件系统
 
 ```python
 from agents.simple import SimpleAgent, AgentEvent
@@ -233,9 +325,33 @@ agent.on(AgentEvent.STREAM_CHUNK, lambda chunk: print(chunk, end="", flush=True)
 # STREAM_CHUNK     - 每个流块
 # STREAM_END       - 流式结束
 # MEMORY_PRUNED   - 记忆裁剪时
+# TOOL_CALL        - 工具调用时
+# TOOL_RESULT      - 工具返回结果时
 ```
 
-### 8. 流式回退机制
+### 11. 环境变量配置
+
+项目支持通过 `.env` 文件管理配置：
+
+```bash
+# LLM 配置
+DEFAULT_PROVIDER=ollama
+QWEN_API_KEY=sk-xxx
+GLM_API_KEY=xxx.xxx
+
+# Agent 配置
+MAX_MEMORY_MESSAGES=50
+USE_INTELLIGENT_PRUNING=false
+
+# 日志配置
+LOG_LEVEL=INFO
+USE_STRUCTURED_LOGGING=false
+
+# 工具配置
+TOOL_MAX_RETRIES=3
+```
+
+### 12. 流式回退机制
 
 ```python
 # 自动启用（默认）
@@ -247,7 +363,7 @@ agent = SimpleAgent(llm, enable_stream_fallback=False)
 
 当流式 API 失败时，自动回退到异步聊天模式，保证可用性。
 
-### 9. 思考模式（Think Mode）
+### 13. 思考模式（Think Mode）
 
 Qwen3 等模型支持思考模式：
 - **开启** (`think=True`)：模型先内部推理，再输出答案（质量高，速度慢）
@@ -263,10 +379,9 @@ python -m cli --no-think "你好"  # CLI 指定
 
 ## 📝 下一步
 
-Phase 2 将实现：
-- Function Calling 工具调用
-- 工具注册与发现
-- Agent 自动选择工具
+Phase 3 将实现：
+- Browser Agent（Playwright + DOM 操作）
+- 网页自动浏览和交互
 
 ---
 

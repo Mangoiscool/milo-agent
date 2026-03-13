@@ -8,6 +8,16 @@
 - 执行工具
 - 将结果返回给 LLM
 - 生成最终响应
+
+DEPRECATED: 此实现已被弃用，请使用 simple.py 中的 SimpleAgent。
+SimpleAgent 提供了更完善的实现，包括：
+- 依赖注入架构（更灵活的 LLM/Memory/ToolRegistry 替换）
+- 异步支持 (async/await)
+- 事件系统（可扩展的钩子机制）
+- 更好的记忆管理（MemoryManager）
+- 更清晰的设计（Minimal agent pattern）
+
+此文件保留作为教学参考和早期实现的示例。
 """
 
 from typing import List, Optional, Dict, Any
