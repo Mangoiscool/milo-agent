@@ -3,8 +3,8 @@
 Milo Agent CLI
 
 使用方式：
-    python -m cli --provider ollama --think false "你好"
-    python -m cli --provider ollama --model qwen3.5:4b "你的名字是什么？"
+    python -m cli.main --provider ollama --think false "你好"
+    python -m cli.main --provider ollama --model qwen3.5:4b "你的名字是什么？"
 """
 
 import argparse
@@ -23,10 +23,10 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例：
-  python -m cli "你好"
-  python -m cli --provider ollama --think false "简单介绍一下 Python"
-  python -m cli --provider qwen --api-key sk-xxx --model qwen-max "写个快排"
-  python -m cli webui  # 启动 Web UI
+  python -m cli.main "你好"
+  python -m cli.main --provider ollama --think false "简单介绍一下 Python"
+  python -m cli.main --provider qwen --api-key sk-xxx --model qwen-max "写个快排"
+  python -m cli.main webui  # 启动 Web UI
         """
     )
 
@@ -224,9 +224,9 @@ def main():
     # 检查是否提供了 prompt
     if not args.prompt:
         print("错误: 请提供要发送的消息")
-        print("使用: python -m cli <message>")
-        print("或使用: python -m cli chat <message>")
-        print("查看帮助: python -m cli --help")
+        print("使用: python -m cli.main <message>")
+        print("或使用: python -m cli.main chat <message>")
+        print("查看帮助: python -m cli.main --help")
         return 1
 
     # 构建 LLM 参数

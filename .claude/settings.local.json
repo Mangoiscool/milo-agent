@@ -58,7 +58,11 @@
       "Bash(source ~/.zshrc)",
       "Bash(conda install:*)",
       "Bash(python -c \"import uvicorn; import websockets; import fastapi; print\\(''FastAPI:'', fastapi.__version__, ''Uvicorn:'', uvicorn.__version__, ''WebSockets:'', websockets.__version__\\)\")",
-      "Bash(conda run:*)"
+      "Bash(conda run:*)",
+      "Bash(find /Users/mango/Projects/milo-agent -type f -name *.py)",
+      "Bash(python -m pytest tests/ -v --tb=short -x)",
+      "Bash(python -m pytest tests/test_simple_agent.py tests/test_memory.py -v)",
+      "Bash(python -m cli.main --help)"
     ]
   }
 }

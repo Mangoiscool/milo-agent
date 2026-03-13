@@ -8,7 +8,7 @@ milo-agent/
 ├── README.md                   # 项目文档
 ├── GETTING_STARTED.md          # 本文档
 ├── .env.example               # 环境变量模板（新增）
-├── cli.py                     # ✨ 命令行工具
+├── cli/                       # ✨ 命令行工具
 ├── __init__.py
 ├── config/
 │   ├── settings.yaml           # YAML 配置文件
@@ -32,7 +32,7 @@ milo-agent/
 │       └── persistent.py       # ✨ 持久化存储（JSON 文件）
 ├── agents/
 │   ├── __init__.py
-│   ├── config.py              # ✨ AgentConfig 配置类
+│   ├── agent_config.py        # ✨ AgentConfig 配置类
 │   └── simple.py             # ✨ SimpleAgent 实现
 ├── demos/
 │   └── chat_demo.py            # ✨ 交互式聊天 Demo
@@ -171,7 +171,7 @@ Message(role=Role.USER, content="你好")
 ```python
 from core.llm.factory import create_llm
 from agents.simple import SimpleAgent
-from agents.config import AgentConfig
+from agents.agent_config import AgentConfig
 
 llm = create_llm("ollama", model="qwen3.5:4b")
 
@@ -229,7 +229,7 @@ memory.load()
 ### 5. AgentConfig 统一配置
 
 ```python
-from agents.config import AgentConfig
+from agents.agent_config import AgentConfig
 
 config = AgentConfig(
     enable_stream_fallback=False,   # 关闭流式回退

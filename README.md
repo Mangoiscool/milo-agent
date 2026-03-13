@@ -23,8 +23,13 @@ core/llm/
 
 ### ✅ Phase 1 - 最小 Agent
 ```
+cli/
+├── __init__.py      # CLI 模块初始化
+└── main.py          # 命令行工具实现
+
 agents/
-└── simple.py         # SimpleAgent（多轮对话 + 记忆）
+├── simple.py        # SimpleAgent（多轮对话 + 记忆）
+└── agent_config.py  # AgentConfig 配置类（原 config.py）
       - 事件系统：扩展性基础
       - 流式回退：自动降级机制
       - AgentConfig：统一配置类
@@ -112,21 +117,21 @@ vi .env
 
 ```bash
 # Ollama 本地模型（默认）
-python -m cli "你好"
+python -m cli.main "你好"
 
 # 关闭思考模式（快速响应）
-python -m cli --no-think "简单介绍一下 Python"
+python -m cli.main --no-think "简单介绍一下 Python"
 
 # 开启思考模式（更深入的推理）
-python -m cli --think "什么是递归？"
+python -m cli.main --think "什么是递归？"
 
 # 指定模型
-python -m cli --model qwen3.5:4b "你好"
+python -m cli.main --model qwen3.5:4b "你好"
 
 # 使用 API 提供者
-python -m cli -p qwen -k sk-xxx "你好"
-python -m cli -p glm -k xxx.xxx "写个快排"
-python -m cli -p deepseek -k sk-xxx "解释一下量子计算"
+python -m cli.main -p qwen -k sk-xxx "你好"
+python -m cli.main -p glm -k xxx.xxx "写个快排"
+python -m cli.main -p deepseek -k sk-xxx "解释一下量子计算"
 ```
 
 ### 4. Web UI 界面
@@ -140,10 +145,10 @@ pip install 'milo-agent[webui]'
 conda install -n milo-agent fastapi uvicorn websockets
 
 # 启动 Web UI
-python -m cli webui
+python -m cli.main webui
 
 # 自定义端口
-python -m cli webui --port 8080
+python -m cli.main webui --port 8080
 ```
 
 访问 `http://localhost:8000` 即可使用图形化界面。
@@ -188,7 +193,7 @@ pytest tests/test_memory.py tests/test_simple_agent.py -v
 ### 1. AgentConfig 统一配置
 
 ```python
-from agents.config import AgentConfig
+from agents.agent_config import AgentConfig
 from agents.simple import SimpleAgent
 
 # 使用配置类（推荐）
@@ -225,7 +230,7 @@ memory = PersistentMemory(storage_path="./my_chat.json")
 ### 3. 智能消息裁剪
 
 ```python
-from agents.config import AgentConfig
+from agents.agent_config import AgentConfig
 
 # 启用智能裁剪（基于消息重要性评分）
 config = AgentConfig(use_intelligent_pruning=True)

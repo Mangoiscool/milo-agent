@@ -45,7 +45,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["core", "agents", "config", "webui"]
+packages = ["core", "agents", "config", "webui", "cli"]
 
 # ====================
 # 开发工具配置
@@ -105,10 +105,11 @@ addopts = [
 
 # 测试覆盖率配置
 [tool.coverage.run]
-source = ["core"]
+source = ["core", "agents", "config"]
 omit = [
     "tests/*",
     "*/__pycache__/*",
+    "webui/*",  # Web UI 通常是前端代码，不参与 Python 测试覆盖率
 ]
 
 [tool.coverage.report]

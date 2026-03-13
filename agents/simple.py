@@ -6,7 +6,7 @@ Provides basic conversational capabilities with memory and tool calling
 from enum import Enum
 from typing import AsyncIterator, Callable, Dict, List, Optional
 
-from agents.config import AgentConfig
+from agents.agent_config import AgentConfig
 from core.llm.base import BaseLLM, LLMResponse, Message, Role
 from core.logger import get_logger
 from core.memory.base import BaseMemory
