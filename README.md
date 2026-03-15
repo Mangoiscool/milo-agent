@@ -9,101 +9,121 @@
 - 支持多种 LLM（Qwen、GLM、Ollama 本地）
 - 最终构建一个实用的 Browser Agent
 
+## 📦 项目结构
+
+```
+milo-agent/
+├── pyproject.toml              # 项目配置
+├── .env.example               # 环境变量模板
+├── cli/                       # 命令行工具
+│   ├── __init__.py
+│   └── main.py               # CLI 主入口
+├── config/                    # 配置管理
+│   ├── settings.yaml         # YAML 配置文件
+│   └── settings.py          # 统一配置管理
+├── core/                      # 核心基础设施
+│   ├── __init__.py
+│   ├── logger.py             # 日志模块
+│   ├── structured_logger.py   # 结构化日志
+│   ├── llm/                 # LLM 抽象层
+│   │   ├── __init__.py
+│   │   ├── base.py           # LLM 抽象基类
+│   │   ├── factory.py        # 工厂方法
+│   │   └── providers/
+│   │       ├── api.py        # API 提供者（Qwen/GLM/DeepSeek）
+│   │       └── ollama.py     # 本地 Ollama（支持思考模式）
+│   ├── memory/              # 记忆系统
+│   │   ├── __init__.py
+│   │   ├── base.py           # 记忆系统抽象基类
+│   │   ├── short_term.py     # 短期记忆（自动裁剪）
+│   │   ├── scoring.py        # 消息评分系统
+│   │   └── persistent.py     # 持久化存储（JSON 文件）
+│   └── tools/               # 工具调用
+│       ├── __init__.py
+│       ├── base.py           # 工具抽象基类
+│       ├── registry.py       # 工具注册表
+│       ├── retry.py          # 重试机制
+│       ├── builtin/          # 内置工具
+│       │   ├── calculator.py
+│       │   ├── weather.py
+│       │   ├── web_search.py
+│       │   ├── file_operations.py
+│       │   └── code_execution.py
+│       ├── mcp.py           # MCP 协议支持
+│       └── mcp_example.py   # MCP 使用示例
+├── agents/                   # Agent 实现
+│   ├── __init__.py
+│   ├── agent_config.py      # AgentConfig 配置类
+│   └── simple.py           # SimpleAgent 实现
+├── webui/                    # Web 界面
+│   ├── server.py            # FastAPI Web 服务器
+│   ├── launch.py            # 启动脚本
+│   └── static/
+│       └── index.html       # Web UI 前端
+├── demos/                    # 示例代码
+│   └── chat_demo.py         # 交互式聊天 Demo
+├── tests/                    # 测试代码
+│   ├── __init__.py
+│   ├── test_factory.py
+│   ├── test_llm_base.py
+│   ├── test_llm.py
+│   ├── test_api_provider.py
+│   ├── test_ollama_provider.py
+│   ├── test_memory.py
+│   └── test_simple_agent.py
+└── skills/                   # 技能模块（预留）
+    └── README.md
+```
+
 ## 当前进度
 
 ### ✅ Phase 0 - LLM 抽象层
-```
-core/llm/
-├── base.py           # 抽象基类（Message, Role, BaseLLM）
-├── factory.py        # 工厂方法（create_llm）
-└── providers/
-    ├── api.py        # API 提供者（Qwen, GLM, DeepSeek）
-    └── ollama.py     # 本地 Ollama（支持思考模式）
-```
+- 抽象基类（Message, Role, BaseLLM）
+- 工厂方法（create_llm）
+- API 提供者（Qwen, GLM, DeepSeek）
+- 本地 Ollama（支持思考模式）
 
 ### ✅ Phase 1 - 最小 Agent
-```
-cli/
-├── __init__.py      # CLI 模块初始化
-└── main.py          # 命令行工具实现
-
-agents/
-├── simple.py        # SimpleAgent（多轮对话 + 记忆）
-└── agent_config.py  # AgentConfig 配置类（原 config.py）
-      - 事件系统：扩展性基础
-      - 流式回退：自动降级机制
-      - AgentConfig：统一配置类
-      - PersistentMemory：持久化存储
-
-core/memory/
-├── base.py           # 记忆系统抽象基类
-├── short_term.py     # 短期记忆（自动裁剪）
-│   └── scoring.py   # 消息重要性评分系统（新增）
-└── persistent.py     # 持久化存储（JSON 文件）
-
-demos/
-└── chat_demo.py      # 交互式聊天 Demo
-```
-
-**核心概念**：
-- **SimpleAgent**：支持同步/异步/流式对话
-- **Memory**：对话历史管理，自动裁剪策略（支持智能评分）
-- **System Prompt**：自定义 Agent 人设
-- **Event System**：BEFORE_CHAT, AFTER_CHAT, STREAM_START/CHUNK/END
-- **AgentConfig**：统一配置管理
-- **PersistentMemory**：对话历史保存/加载
+- SimpleAgent（多轮对话 + 记忆）
+- 事件系统：扩展性基础
+- 流式回退：自动降级机制
+- AgentConfig：统一配置类
+- PersistentMemory：持久化存储
+- 消息评分系统：智能裁剪
 
 ### ✅ Phase 2 - 工具调用
-```
-core/tools/
-├── base.py           # 工具抽象基类
-├── registry.py       # 工具注册表（带重试机制）
-│   └── retry.py     # 重试机制（新增）
-├── builtin/
-│   ├── calculator.py # 计算器
-│   ├── weather.py    # 天气查询
-│   ├── web_search.py # 网络搜索
-│   ├── file_operations.py # 文件操作
-│   └── code_execution.py # 代码执行
-├── mcp.py           # MCP (Model Context Protocol) 支持
-└── mcp_example.py   # MCP 使用示例
-
-config/
-└── settings.py       # 统一配置管理（新增）
-.env.example          # 环境变量模板（新增）
-
-webui/
-├── server.py        # FastAPI Web 服务器
-├── launch.py        # 启动脚本
-└── static/
-    └── index.html   # Web UI 前端（代码高亮 + 导出功能）
-
-core/
-└── structured_logger.py  # 结构化日志（新增）
-```
+- 工具抽象基类
+- 工具注册表（带重试机制）
+- 内置工具：计算器、天气查询、网络搜索、文件操作、代码执行
+- MCP (Model Context Protocol) 支持
+- Web UI 界面
+- 结构化日志
 
 ### 🔜 Phase 3 - Browser Agent
-```
-agents/
-└── browser/         # Playwright + DOM 操作
-```
+- Playwright + DOM 操作
+- 网页自动浏览和交互
 
 ### 🔜 Phase 4 - 进阶
-```
-core/memory/
-└── long_term/      # 长期记忆（向量存储）
-```
+- 长期记忆（向量存储）
+- ReAct 框架
+- 反思机制
 
-## 快速开始
+## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 环境准备
 
 ```bash
+# 进入项目目录
 cd milo-agent
+
+# 激活虚拟环境
+conda activate milo-agent
+
+# 安装依赖
 pip install -e .
 ```
 
-### 2. 配置环境变量（可选）
+### 2. 配置环境变量（推荐）
 
 ```bash
 # 复制配置模板
@@ -113,10 +133,17 @@ cp .env.example .env
 vi .env
 ```
 
-### 3. 使用 CLI（单次对话）
+**推荐配置项**：
+- `DEFAULT_PROVIDER`: 选择默认的 LLM 提供者
+- `QWEN_API_KEY` / `GLM_API_KEY` / `DEEPSEEK_API_KEY`: API 密钥
+- `MAX_MEMORY_MESSAGES`: 最大消息数量
+- `USE_INTELLIGENT_PRUNING`: 是否启用智能裁剪
+- `USE_STRUCTURED_LOGGING`: 是否使用 JSON 格式日志
+
+### 3. CLI 单次对话
 
 ```bash
-# Ollama 本地模型（默认）
+# 使用 Ollama 本地模型（默认）
 python -m cli.main "你好"
 
 # 关闭思考模式（快速响应）
@@ -128,22 +155,33 @@ python -m cli.main --think "什么是递归？"
 # 指定模型
 python -m cli.main --model qwen3.5:4b "你好"
 
-# 使用 API 提供者
-python -m cli.main -p qwen -k sk-xxx "你好"
-python -m cli.main -p glm -k xxx.xxx "写个快排"
-python -m cli.main -p deepseek -k sk-xxx "解释一下量子计算"
+# 使用 API 提供者（推荐使用 .env 配置）
+python -m cli.main -p qwen "你好"
+python -m cli.main -p glm "写个快排"
+python -m cli.main -p deepseek "解释一下量子计算"
 ```
 
-### 4. Web UI 界面
-
-启动 Web UI 服务器（需要安装额外依赖）：
+### 4. 交互式 Demo（多轮对话）
 
 ```bash
-# 安装 Web UI 依赖
-pip install 'milo-agent[webui]'
-# 或使用 conda
-conda install -n milo-agent fastapi uvicorn websockets
+python demos/chat_demo.py
+```
 
+按提示选择：
+1. **Provider**: 选 `4` (Ollama) - 本地运行，无需 API key
+2. **Model**: 默认 `qwen3.5:4b`
+3. **Mode**: 选 `2` (流式输出)
+
+**支持命令**：
+- `history` - 查看对话历史
+- `clear` - 清空记忆
+- `quit` - 退出
+
+### 5. Web UI 界面
+
+启动 Web UI 服务器：
+
+```bash
 # 启动 Web UI
 python -m cli.main webui
 
@@ -153,30 +191,10 @@ python -m cli.main webui --port 8080
 
 访问 `http://localhost:8000` 即可使用图形化界面。
 
-**Web UI 新功能**：
+**Web UI 功能**：
 - 🎨 代码高亮（Highlight.js）
 - 📥 对话导出（Markdown/JSON/纯文本）
 - 📋 一键复制代码块
-
-### 5. 运行示例
-
-#### 基础示例
-```bash
-# 交互式聊天 Demo
-python examples/basic/chat.py
-
-# 工具使用 Demo
-python examples/tools/tool_demo.py
-```
-
-#### 高级示例
-```bash
-# 完整 Agent 功能演示
-python examples/advanced/complete_agent.py
-
-# 网络搜索工具演示
-python examples/tools/web_search.py
-```
 
 ### 6. 运行测试
 
@@ -184,54 +202,116 @@ python examples/tools/web_search.py
 # 运行所有测试
 pytest tests/ -v
 
-# 只测试 Phase 1
-pytest tests/test_memory.py tests/test_simple_agent.py -v
+# 只测试 Phase 1（Agent + Memory）
+pytest tests/test_memory.py tests/test_simple_agent.py tests/test_event_system.py -v
 ```
 
-## 核心概念
+## 💡 核心概念
 
-### 1. AgentConfig 统一配置
+### 1. LLM 抽象层
 
 ```python
-from agents.agent_config import AgentConfig
-from agents.simple import SimpleAgent
+from core.llm.factory import create_llm
 
-# 使用配置类（推荐）
+# 一行代码切换模型
+llm = create_llm("glm", api_key="xxx")
+llm = create_llm("ollama", model="qwen3.5:4b", think=False)
+```
+
+### 2. Message 设计
+
+```python
+from core.llm.base import Message, Role
+
+Message(role=Role.USER, content="你好")
+# → {"role": "user", "content": "你好"}
+```
+
+### 3. SimpleAgent
+
+```python
+from core.llm.factory import create_llm
+from agents.simple import SimpleAgent
+from agents.agent_config import AgentConfig
+
+llm = create_llm("ollama", model="qwen3.5:4b")
+
+# 方式1：使用配置类（推荐）
 config = AgentConfig(
-    enable_stream_fallback=False,
+    enable_stream_fallback=True,
     max_memory_messages=100,
     system_prompt="你是一个有用的助手",
-    use_intelligent_pruning=True  # 新增：启用智能裁剪
+    use_intelligent_pruning=True  # 启用智能裁剪
 )
 agent = SimpleAgent(llm, config=config)
 
-# 或直接传参（兼容旧方式）
+# 方式2：直接传参（兼容旧方式）
 agent = SimpleAgent(llm, max_memory_messages=100)
+
+# 同步对话
+response = agent.chat("你好！")
+
+# 异步对话
+response = await agent.achat("你好！")
+
+# 流式输出
+async for chunk in agent.astream("你好！"):
+    print(chunk, end="", flush=True)
+
+# 查看历史
+history = agent.get_history()
+
+# 清空记忆
+agent.clear_history()
 ```
 
-### 2. 持久化存储
+### 4. 记忆系统
 
 ```python
+from core.memory.short_term import ShortTermMemory
 from core.memory.persistent import PersistentMemory
 
-# 持久化记忆
-memory = PersistentMemory(max_messages=100)
+# 短期记忆（内存中，程序结束丢失）
+memory = ShortTermMemory(max_messages=50, use_intelligent_pruning=True)
 
-# 保存到默认路径 (~/.milo-agent/memory.json)
+# 持久化存储（保存到文件，重启后可恢复）
+memory = PersistentMemory(
+    max_messages=100,
+    storage_path="./my_chat.json"
+)
+
+# 保存到文件
 memory.save()
 
-# 加载记忆
-count = memory.load()
-
-# 自定义路径
-memory = PersistentMemory(storage_path="./my_chat.json")
+# 从文件加载
+memory.load()
 ```
 
-### 3. 智能消息裁剪
+**PersistentMemory 特性**：
+- 继承 ShortTermMemory，保留所有原有功能
+- `save()`: 保存到 JSON 文件
+- `load()`: 从文件加载，返回消息数
+- 添加消息时自动保存
+- 清空时删除存储文件
+
+### 5. AgentConfig 统一配置
 
 ```python
 from agents.agent_config import AgentConfig
 
+config = AgentConfig(
+    enable_stream_fallback=False,   # 关闭流式回退
+    max_memory_messages=100,       # 最大消息数
+    system_prompt="You are helpful",  # 系统提示词
+    use_intelligent_pruning=True   # 启用智能裁剪
+)
+
+agent = SimpleAgent(llm, config=config)
+```
+
+### 6. 智能消息裁剪
+
+```python
 # 启用智能裁剪（基于消息重要性评分）
 config = AgentConfig(use_intelligent_pruning=True)
 agent = SimpleAgent(llm, config=config)
@@ -243,39 +323,50 @@ agent = SimpleAgent(llm, config=config)
 - 时间衰减：最近消息得分更高
 - 关键词：包含"错误"、"重要"等关键词加分
 
-### 4. 工具调用重试机制
-
-工具执行失败时自动重试，支持：
-- 指数退避 + 随机抖动
-- 可重试错误类型自动识别
-- 可配置重试次数和延迟
+### 7. 工具调用重试
 
 ```python
 from core.tools.retry import RetryConfig
 
 # 自定义重试配置
-config = RetryConfig(
+retry_config = RetryConfig(
     max_retries=3,
     initial_delay=1.0,
     max_delay=30.0
 )
+
+# 使用自定义配置
+from core.tools import ToolRegistry
+registry = ToolRegistry(retry_config=retry_config)
 ```
 
-### 5. 事件系统
+**重试机制特性**：
+- 指数退避 + 随机抖动
+- 可重试错误类型自动识别
+- 可配置重试次数和延迟
+
+### 8. 事件系统
 
 ```python
 from agents.simple import SimpleAgent, AgentEvent
 
 # 注册事件处理器
-agent.on(AgentEvent.BEFORE_CHAT, lambda **kwargs: print(f"Before: {kwargs.get('user_input')}"))
-agent.on(AgentEvent.AFTER_CHAT, lambda response: print(f"Response: {response[:50]}..."))
+agent.on(AgentEvent.BEFORE_CHAT, lambda **kwargs: print(f"Before: {kwargs}"))
+agent.on(AgentEvent.AFTER_CHAT, lambda response: print(f"Response: {response[:50]}"))
 agent.on(AgentEvent.STREAM_CHUNK, lambda chunk: print(chunk, end="", flush=True))
 
-# 使用 Agent
-response = agent.chat("Hello")
+# 支持的事件类型
+# BEFORE_CHAT      - 发送输入前
+# AFTER_CHAT       - 接收回复后
+# STREAM_START     - 流式开始
+# STREAM_CHUNK     - 每个流块
+# STREAM_END       - 流式结束
+# MEMORY_PRUNED   - 记忆裁剪时
+# TOOL_CALL        - 工具调用时
+# TOOL_RESULT      - 工具返回结果时
 ```
 
-### 6. 结构化日志
+### 9. 结构化日志
 
 ```python
 # 在 .env 中启用
@@ -294,7 +385,7 @@ logger_with_context = logger.bind(session_id="abc123", user_id="user_456")
 logger_with_context.info("Action completed", action="login", duration=0.123)
 ```
 
-### 7. 环境变量配置
+### 10. 环境变量配置
 
 项目支持通过 `.env` 文件管理配置：
 
@@ -314,6 +405,49 @@ USE_STRUCTURED_LOGGING=false
 
 # 工具配置
 TOOL_MAX_RETRIES=3
+```
+
+### 11. 流式回退机制
+
+```python
+# 自动启用（默认）
+agent = SimpleAgent(llm)
+
+# 手动关闭
+agent = SimpleAgent(llm, enable_stream_fallback=False)
+```
+
+当流式 API 失败时，自动回退到异步聊天模式，保证可用性。
+
+### 12. 思考模式（Think Mode）
+
+Qwen3 等模型支持思考模式：
+- **开启** (`think=True`)：模型先内部推理，再输出答案（质量高，速度慢）
+- **关闭** (`think=False`)：直接输出答案（速度快）
+
+```python
+llm = create_llm("ollama", think=False)  # 代码中指定
+```
+
+```bash
+python -m cli.main --no-think "你好"  # CLI 指定
+```
+
+### 13. MCP (Model Context Protocol)
+
+项目支持 MCP 协议，允许与各种工具和服务集成：
+
+```python
+from core.tools.mcp import MCPClient
+
+# 连接到 MCP 服务器
+client = MCPClient("http://localhost:3000")
+
+# 获取可用工具
+tools = client.list_tools()
+
+# 调用工具
+result = client.call_tool("calculator", expression="2+2")
 ```
 
 ## 学习路线
@@ -351,21 +485,33 @@ TOOL_MAX_RETRIES=3
 
 ## 示例代码
 
-项目包含丰富的示例代码，按功能分类在 `examples/` 目录：
+项目包含丰富的示例代码：
 
-- **`examples/basic/`** - 基础功能示例
-  - `chat.py` - 交互式聊天演示
-- **`examples/tools/`** - 工具使用示例
-  - `tool_demo.py` - 工具调用演示
-  - `web_search.py` - 网络搜索工具示例
-- **`examples/advanced/`** - 高级功能示例
-  - `complete_agent.py` - 完整 Agent 功能演示
+### 基础示例
+```bash
+# 交互式聊天 Demo
+python demos/chat_demo.py
+```
 
-**Web UI**:
-- **`webui/`** - Web 界面
-  - `server.py` - FastAPI 服务器
-  - `static/index.html` - 前端页面
-  - [使用文档](webui/README.md)
+### 高级示例
+```bash
+# 工具使用 Demo
+python demos/tool_demo.py
+
+# 网络搜索工具演示
+python demos/web_search.py
+
+# MCP 协议使用
+python demos/mcp_demo.py
+```
+
+### Web UI
+```bash
+# 启动 Web 服务器
+python -m cli.main webui
+```
+
+访问 `http://localhost:8000` 即可使用图形化界面。
 
 ## License
 
