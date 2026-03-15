@@ -83,21 +83,21 @@ vi .env
 
 ```bash
 # 使用 Ollama 本地模型（默认）
-python -m cli "你好"
+python -m cli.main "你好"
 
 # 关闭思考模式（快速响应）
-python -m cli --no-think "简单介绍一下 Python"
+python -m cli.main --no-think "简单介绍一下 Python"
 
 # 开启思考模式（更深入的推理）
-python -m cli --think "什么是递归？"
+python -m cli.main --think "什么是递归？"
 
 # 指定模型
-python -m cli --model qwen3.5:4b "你好"
+python -m cli.main --model qwen3.5:4b "你好"
 
 # 使用 API 提供者（推荐使用 .env 配置）
-python -m cli -p qwen "你好"
-python -m cli -p glm "写个快排"
-python -m cli -p deepseek "解释一下量子计算"
+python -m cli.main -p qwen "你好"
+python -m cli.main -p glm "写个快排"
+python -m cli.main -p deepseek "解释一下量子计算"
 ```
 
 ### 4. 交互式 Demo（多轮对话）
@@ -122,10 +122,10 @@ python demos/chat_demo.py
 
 ```bash
 # 启动 Web UI
-python -m cli webui
+python -m cli.main webui
 
 # 自定义端口
-python -m cli webui --port 8080
+python -m cli.main webui --port 8080
 ```
 
 访问 `http://localhost:8000` 即可使用图形化界面。
@@ -374,7 +374,7 @@ llm = create_llm("ollama", think=False)  # 代码中指定
 ```
 
 ```bash
-python -m cli --no-think "你好"  # CLI 指定
+python -m cli.main --no-think "你好"  # CLI 指定
 ```
 
 ## 📝 下一步
