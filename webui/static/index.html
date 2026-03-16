@@ -84,9 +84,9 @@
 
         .header-controls {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .provider-select {
@@ -105,13 +105,13 @@
         }
 
         .api-key-input {
-            padding: 8px 15px;
+            padding: 8px 12px;
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.3);
             background: rgba(255, 255, 255, 0.15);
             color: white;
-            font-size: 14px;
-            width: 200px;
+            font-size: 13px;
+            width: 140px;
             outline: none;
             transition: all 0.3s;
         }
@@ -125,16 +125,16 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
-        .api-key-input.hidden {
-            display: none;
+        .hidden {
+            display: none !important;
         }
 
         .btn {
-            padding: 8px 20px;
+            padding: 8px 14px;
             border: none;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             transition: all 0.3s;
         }
 
@@ -154,6 +154,25 @@
 
         .btn-danger:hover {
             background: rgba(255, 100, 100, 0.7);
+        }
+
+        .btn-confirm {
+            background: rgba(76, 175, 80, 0.6);
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: rgba(76, 175, 80, 0.8);
+        }
+
+        .btn-confirm.ready {
+            background: rgba(76, 175, 80, 0.9);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         /* Chat Area */
@@ -513,6 +532,7 @@
                     <option value="deepseek">DeepSeek</option>
                 </select>
                 <input type="password" class="api-key-input hidden" id="apiKeyInput" placeholder="输入 API Key">
+                <button class="btn btn-confirm hidden" id="confirmApiKeyBtn">确认</button>
                 <button class="btn btn-primary" id="newChatBtn">新对话</button>
                 <button class="btn btn-primary" id="exportBtn">📥 导出</button>
             </div>
@@ -573,6 +593,7 @@
         const newChatBtn = document.getElementById('newChatBtn');
         const exportBtn = document.getElementById('exportBtn');
         const apiKeyInput = document.getElementById('apiKeyInput');
+        const confirmApiKeyBtn = document.getElementById('confirmApiKeyBtn');
         const welcome = document.getElementById('welcome');
 
         // ═══════════════════════════════════════════════════════════════
@@ -636,8 +657,21 @@
             const provider = providerSelect.value;
             if (providersNeedingKey.includes(provider)) {
                 apiKeyInput.classList.remove('hidden');
+                confirmApiKeyBtn.classList.remove('hidden');
+                updateConfirmButtonState();
             } else {
                 apiKeyInput.classList.add('hidden');
+                confirmApiKeyBtn.classList.add('hidden');
+            }
+        }
+
+        // Update confirm button visual state based on API key input
+        function updateConfirmButtonState() {
+            const hasKey = apiKeyInput.value.trim().length > 0;
+            if (hasKey) {
+                confirmApiKeyBtn.classList.add('ready');
+            } else {
+                confirmApiKeyBtn.classList.remove('ready');
             }
         }
 
@@ -662,17 +696,14 @@
         // Message Handling
         // ═══════════════════════════════════════════════════════════════
         function handleMessage(data) {
-            // 隐藏欢迎消息
-            if (welcome) {
-                welcome.style.display = 'none';
-            }
-
             switch (data.type) {
                 case 'user':
+                    hideWelcome();
                     addMessage('user', data.content);
                     messageHistory.push({ role: 'user', content: data.content, timestamp: new Date().toISOString() });
                     break;
                 case 'assistant':
+                    hideWelcome();
                     removeTypingIndicator();
                     addMessage('assistant', data.content);
                     messageHistory.push({ role: 'assistant', content: data.content, timestamp: new Date().toISOString() });
@@ -703,8 +734,19 @@
                     statusDot.classList.remove('connected');
                     statusDot.classList.add('configured');
                     statusText.textContent = '已连接';
+                    // 显示确认成功反馈
+                    confirmApiKeyBtn.textContent = '✓';
+                    setTimeout(() => {
+                        confirmApiKeyBtn.textContent = '确认';
+                    }, 1500);
                     console.log('Config acknowledged');
                     break;
+            }
+        }
+
+        function hideWelcome() {
+            if (welcome) {
+                welcome.style.display = 'none';
             }
         }
 
@@ -848,6 +890,16 @@
                 e.preventDefault();
                 sendConfig();
             }
+        });
+
+        // API Key 输入变化时更新确认按钮状态
+        apiKeyInput.addEventListener('input', () => {
+            updateConfirmButtonState();
+        });
+
+        // 确认按钮点击事件
+        confirmApiKeyBtn.addEventListener('click', () => {
+            sendConfig();
         });
 
         // Auto-resize textarea
