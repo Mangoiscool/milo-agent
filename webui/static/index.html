@@ -609,10 +609,15 @@
             // 构建 WebSocket URL
             const wsUrl = `ws://${window.location.host}/ws/chat/${sessionId}`;
             ws = new WebSocket(wsUrl);
+            window.currentWs = ws;  // 保存当前连接的引用，用于 onclose 检查
+
+            // 用局部变量捕获当前 ws 引用，避免闭包问题
+            const thisWs = ws;
 
             ws.onopen = () => {
                 isConnected = true;
                 isConfigured = false;
+                sendBtn.disabled = false;  // 启用发送按钮
                 statusDot.classList.add('connected');
                 statusText.textContent = '连接中...';
 
@@ -632,12 +637,16 @@
             };
 
             ws.onclose = () => {
-                isConnected = false;
-                isConfigured = false;
-                statusDot.classList.remove('connected');
-                statusDot.classList.remove('configured');
-                statusText.textContent = '未连接';
-                sendBtn.disabled = true;
+                // 只有当关闭的是当前连接时才更新状态
+                // 使用闭包捕获的 thisWs 而不是全局变量 ws
+                if (thisWs === window.currentWs) {
+                    isConnected = false;
+                    isConfigured = false;
+                    statusDot.classList.remove('connected');
+                    statusDot.classList.remove('configured');
+                    statusText.textContent = '未连接';
+                    sendBtn.disabled = true;
+                }
                 console.log('WebSocket disconnected');
             };
 
