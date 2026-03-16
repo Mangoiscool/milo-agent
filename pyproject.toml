@@ -55,6 +55,11 @@ rag = [
     "sentence-transformers>=2.2,<4.0",
 ]
 
+browser = [
+    # 浏览器自动化
+    "playwright>=1.40,<2.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
