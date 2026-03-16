@@ -60,6 +60,28 @@
             content: "🤖";
         }
 
+        /* Connection status in header */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected,
+        .status-dot.configured {
+            background: #51cf66;
+        }
+
         .header-controls {
             display: flex;
             gap: 15px;
@@ -476,7 +498,13 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Milo Agent</h1>
+            <h1>
+                Milo Agent
+                <div class="connection-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">未连接</span>
+                </div>
+            </h1>
             <div class="header-controls">
                 <select class="provider-select" id="providerSelect">
                     <option value="ollama">Ollama (本地)</option>
@@ -485,7 +513,6 @@
                     <option value="deepseek">DeepSeek</option>
                 </select>
                 <input type="password" class="api-key-input hidden" id="apiKeyInput" placeholder="输入 API Key">
-                <div class="status disconnected" id="status">未连接</div>
                 <button class="btn btn-primary" id="newChatBtn">新对话</button>
                 <button class="btn btn-primary" id="exportBtn">📥 导出</button>
             </div>
@@ -527,6 +554,7 @@
         let ws = null;
         let sessionId = null;
         let isConnected = false;
+        let isConfigured = false;
         let currentApiKey = null;
         let messageHistory = [];
 
@@ -539,7 +567,8 @@
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
-        const statusEl = document.getElementById('status');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
         const providerSelect = document.getElementById('providerSelect');
         const newChatBtn = document.getElementById('newChatBtn');
         const exportBtn = document.getElementById('exportBtn');
@@ -562,9 +591,9 @@
 
             ws.onopen = () => {
                 isConnected = true;
-                statusEl.textContent = '已连接';
-                statusEl.className = 'status connected';
-                sendBtn.disabled = false;
+                isConfigured = false;
+                statusDot.classList.add('connected');
+                statusText.textContent = '连接中...';
 
                 // 发送配置消息（provider 和 api_key）
                 ws.send(JSON.stringify({
@@ -583,8 +612,10 @@
 
             ws.onclose = () => {
                 isConnected = false;
-                statusEl.textContent = '未连接';
-                statusEl.className = 'status disconnected';
+                isConfigured = false;
+                statusDot.classList.remove('connected');
+                statusDot.classList.remove('configured');
+                statusText.textContent = '未连接';
                 sendBtn.disabled = true;
                 console.log('WebSocket disconnected');
             };
@@ -605,10 +636,26 @@
             const provider = providerSelect.value;
             if (providersNeedingKey.includes(provider)) {
                 apiKeyInput.classList.remove('hidden');
-                apiKeyInput.focus();
             } else {
                 apiKeyInput.classList.add('hidden');
             }
+        }
+
+        // Send config message (without reconnection)
+        function sendConfig() {
+            if (!isConnected) return;
+
+            const provider = providerSelect.value;
+            const apiKey = apiKeyInput.value || null;
+            isConfigured = false;
+            statusDot.classList.remove('configured');
+            statusText.textContent = '配置中...';
+
+            ws.send(JSON.stringify({
+                type: 'config',
+                provider: provider,
+                api_key: apiKey
+            }));
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -652,6 +699,10 @@
                     break;
                 case 'config_ack':
                     // 配置确认，可以开始发送消息
+                    isConfigured = true;
+                    statusDot.classList.remove('connected');
+                    statusDot.classList.add('configured');
+                    statusText.textContent = '已连接';
                     console.log('Config acknowledged');
                     break;
             }
@@ -743,7 +794,7 @@
         // ═══════════════════════════════════════════════════════════════
         function sendMessage() {
             const message = messageInput.value.trim();
-            if (!message || !isConnected) return;
+            if (!message || !isConnected || !isConfigured) return;
 
             messageInput.value = '';
             addTypingIndicator();
@@ -779,16 +830,23 @@
             connect();
         });
 
-        providerSelect.addEventListener('change', toggleApiKeyInput);
+        providerSelect.addEventListener('change', () => {
+            const provider = providerSelect.value;
+            toggleApiKeyInput();
+            // Ollama 可以立即切换（不需要 API Key）
+            if (provider === 'ollama') {
+                sendConfig();
+            } else {
+                // 其他 provider 等待用户输入 API Key
+                apiKeyInput.focus();
+            }
+        });
 
-        // 切换 provider 时重新连接
+        // API Key 输入完成后发送配置
         apiKeyInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                if (ws) {
-                    ws.close();
-                }
-                connect();
+                sendConfig();
             }
         });
 
