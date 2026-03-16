@@ -132,6 +132,7 @@ milo-agent/
 - 网页自动浏览和数据提取
 
 ### 🔜 Phase 4 - 进阶
+- 长期记忆（对话历史向量化、跨会话检索）
 - ReAct 框架
 - 反思机制
 - 多 Agent 协作
@@ -487,7 +488,7 @@ result = client.call_tool("calculator", expression="2+2")
   - [ ] Phase 3.1 - RAG 基础设施（文档加载、Embedding、向量存储）
   - [ ] Phase 3.2 - RAG Agent（多知识库管理、增量更新）
   - [ ] Phase 3.3 - Browser Agent（Playwright + DOM）
-- [ ] **Phase 4** - 进阶（ReAct、反思、多 Agent 协作）
+- [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思、多 Agent 协作）
 
 ## 新增功能（v0.2.0）
 
