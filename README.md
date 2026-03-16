@@ -7,7 +7,8 @@
 这是一个从零开始构建的 AI Agent 项目，目标是：
 - 深入理解 Agent 的核心原理
 - 支持多种 LLM（Qwen、GLM、Ollama 本地）
-- 最终构建一个实用的 Browser Agent
+- 构建 RAG Agent（本地知识库检索）
+- 构建 Browser Agent（网页自动交互）
 
 ## 📦 项目结构
 
@@ -51,10 +52,21 @@ milo-agent/
 │       │   └── code_execution.py
 │       ├── mcp.py           # MCP 协议支持
 │       └── mcp_example.py   # MCP 使用示例
+│   └── rag/                 # RAG 模块（Phase 3）
+│       ├── __init__.py
+│       ├── base.py           # RAG 基类
+│       ├── document_loader.py # 文档加载器
+│       ├── text_splitter.py  # 文本切分
+│       ├── embeddings.py     # Embedding 抽象
+│       ├── vector_store.py   # 向量存储
+│       └── retriever.py      # 检索器
 ├── agents/                   # Agent 实现
 │   ├── __init__.py
 │   ├── agent_config.py      # AgentConfig 配置类
-│   └── simple.py           # SimpleAgent 实现
+│   ├── simple.py           # SimpleAgent 实现
+│   └── rag.py              # RAG Agent（Phase 3）
+├── knowledge_base/           # 知识库目录（Phase 3）
+│   └── .gitkeep
 ├── webui/                    # Web 界面
 │   ├── server.py            # FastAPI Web 服务器
 │   ├── launch.py            # 启动脚本
@@ -99,14 +111,30 @@ milo-agent/
 - Web UI 界面
 - 结构化日志
 
-### 🔜 Phase 3 - Browser Agent
-- Playwright + DOM 操作
-- 网页自动浏览和交互
+### 🔜 Phase 3 - RAG Agent & Browser Agent
+
+#### Phase 3.1 - RAG 基础设施
+- 文档加载器（PDF、Markdown、Word、Excel、图像）
+- 文本切分器（RecursiveCharacterTextSplitter）
+- Embedding 抽象层（本地 Ollama + API 提供商）
+- 向量存储（ChromaDB，支持持久化）
+- 检索器（余弦相似度 + MMR）
+
+#### Phase 3.2 - RAG Agent
+- 继承 SimpleAgent，集成检索能力
+- 多知识库管理（创建、更新、删除）
+- 增量更新支持
+- Web UI 集成（知识库管理界面）
+
+#### Phase 3.3 - Browser Agent
+- Playwright 集成
+- DOM 操作与元素交互
+- 网页自动浏览和数据提取
 
 ### 🔜 Phase 4 - 进阶
-- 长期记忆（向量存储）
 - ReAct 框架
 - 反思机制
+- 多 Agent 协作
 
 ## 🚀 快速开始
 
@@ -455,8 +483,11 @@ result = client.call_tool("calculator", expression="2+2")
 - [x] **Phase 0** - LLM 抽象层
 - [x] **Phase 1** - 最小 Agent（事件系统、配置类、持久化）
 - [x] **Phase 2** - 工具调用（Function Calling）+ Web UI
-- [ ] **Phase 3** - Browser Agent（Playwright + DOM）
-- [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思）
+- [ ] **Phase 3** - RAG Agent & Browser Agent
+  - [ ] Phase 3.1 - RAG 基础设施（文档加载、Embedding、向量存储）
+  - [ ] Phase 3.2 - RAG Agent（多知识库管理、增量更新）
+  - [ ] Phase 3.3 - Browser Agent（Playwright + DOM）
+- [ ] **Phase 4** - 进阶（ReAct、反思、多 Agent 协作）
 
 ## 新增功能（v0.2.0）
 
