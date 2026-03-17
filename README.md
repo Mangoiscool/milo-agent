@@ -52,7 +52,7 @@ milo-agent/
 │       │   └── code_execution.py
 │       ├── mcp.py           # MCP 协议支持
 │       └── mcp_example.py   # MCP 使用示例
-│   └── rag/                 # RAG 模块（Phase 3）
+│   └── rag/                 # RAG 模块
 │       ├── __init__.py
 │       ├── base.py           # RAG 基类
 │       ├── document_loader.py # 文档加载器
@@ -60,20 +60,35 @@ milo-agent/
 │       ├── embeddings.py     # Embedding 抽象
 │       ├── vector_store.py   # 向量存储
 │       └── retriever.py      # 检索器
+│   └── browser/              # Browser 模块
+│       ├── __init__.py
+│       ├── base.py           # Browser 基类
+│       ├── controller.py     # 浏览器控制器
+│       └── tools.py          # 浏览器工具
 ├── agents/                   # Agent 实现
 │   ├── __init__.py
 │   ├── agent_config.py      # AgentConfig 配置类
 │   ├── simple.py           # SimpleAgent 实现
-│   └── rag.py              # RAG Agent（Phase 3）
-├── knowledge_base/           # 知识库目录（Phase 3）
+│   ├── rag.py              # RAG Agent
+│   └── browser.py          # Browser Agent
+├── knowledge_base/           # 知识库目录
 │   └── .gitkeep
+├── examples/                 # 示例代码
+│   ├── basic/               # 基础示例
+│   │   └── chat.py
+│   ├── tools/               # 工具示例
+│   │   ├── tool_demo.py
+│   │   └── web_search.py
+│   ├── agents/              # Agent 示例
+│   │   ├── rag_demo.py
+│   │   └── browser_demo.py
+│   └── advanced/            # 高级示例
+│       └── complete_agent.py
 ├── webui/                    # Web 界面
 │   ├── server.py            # FastAPI Web 服务器
 │   ├── launch.py            # 启动脚本
 │   └── static/
 │       └── index.html       # Web UI 前端
-├── demos/                    # 示例代码
-│   └── chat_demo.py         # 交互式聊天 Demo
 ├── tests/                    # 测试代码
 │   ├── __init__.py
 │   ├── test_factory.py
@@ -484,10 +499,10 @@ result = client.call_tool("calculator", expression="2+2")
 - [x] **Phase 0** - LLM 抽象层
 - [x] **Phase 1** - 最小 Agent（事件系统、配置类、持久化）
 - [x] **Phase 2** - 工具调用（Function Calling）+ Web UI
-- [ ] **Phase 3** - RAG Agent & Browser Agent
-  - [ ] Phase 3.1 - RAG 基础设施（文档加载、Embedding、向量存储）
-  - [ ] Phase 3.2 - RAG Agent（多知识库管理、增量更新）
-  - [ ] Phase 3.3 - Browser Agent（Playwright + DOM）
+- [x] **Phase 3** - RAG Agent & Browser Agent
+  - [x] Phase 3.1 - RAG 基础设施（文档加载、Embedding、向量存储）
+  - [x] Phase 3.2 - RAG Agent（多知识库管理、增量更新）
+  - [x] Phase 3.3 - Browser Agent（Playwright + DOM）
 - [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思、多 Agent 协作）
 
 ## 新增功能（v0.2.0）
@@ -522,19 +537,28 @@ result = client.call_tool("calculator", expression="2+2")
 ### 基础示例
 ```bash
 # 交互式聊天 Demo
-python demos/chat_demo.py
+python examples/basic/chat.py
 ```
 
-### 高级示例
+### 工具使用示例
 ```bash
-# 工具使用 Demo
-python demos/tool_demo.py
+# 工具调用 Demo
+python examples/tools/tool_demo.py
 
 # 网络搜索工具演示
-python demos/web_search.py
+python examples/tools/web_search.py
+```
 
-# MCP 协议使用
-python demos/mcp_demo.py
+### Agent 示例
+```bash
+# RAG Agent 演示
+python examples/agents/rag_demo.py
+
+# Browser Agent 演示
+python examples/agents/browser_demo.py
+
+# 完整功能演示
+python examples/advanced/complete_agent.py
 ```
 
 ### Web UI

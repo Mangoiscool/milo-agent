@@ -8,6 +8,7 @@
 - MCP 服务器自动发现
 """
 
+import asyncio
 from typing import Dict, List, Optional
 
 from .base import BaseTool, ToolResult
@@ -175,6 +176,52 @@ class ToolRegistry:
                 content="",
                 is_error=True,
                 error_message=f"Tool execution failed after retries: {str(e)}"
+            )
+
+    async def aexecute(self, name: str, **kwargs) -> ToolResult:
+        """
+        异步执行工具
+
+        Args:
+            name: 工具名称
+            **kwargs: 工具参数
+
+        Returns:
+            执行结果
+        """
+        tool = self._tools.get(name)
+        if not tool:
+            self.logger.warning(f"Tool not found: {name}")
+            return ToolResult(
+                content="",
+                is_error=True,
+                error_message=f"Tool '{name}' not found. Available tools: {', '.join(self.list_tools())}"
+            )
+
+        self.logger.info(f"Async executing tool: {name} with args: {kwargs}")
+
+        try:
+            # 检查工具是否有异步执行方法
+            if hasattr(tool, 'aexecute'):
+                result = await tool.aexecute(**kwargs)
+            else:
+                # 同步执行放在线程池中
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: tool.execute(**kwargs)
+                )
+
+            if result.is_error:
+                self.logger.warning(f"Tool {name} failed: {result.error_message}")
+            else:
+                self.logger.debug(f"Tool {name} result: {result.content[:100] if result.content else ''}...")
+
+            return result
+        except Exception as e:
+            self.logger.error(f"Tool {name} async execution error: {e}")
+            return ToolResult(
+                content="",
+                is_error=True,
+                error_message=f"Tool execution failed: {str(e)}"
             )
     
     # ═══════════════════════════════════════════════════════════════

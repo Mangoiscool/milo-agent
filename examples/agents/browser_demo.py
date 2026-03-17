@@ -3,6 +3,12 @@
 展示浏览器自动化的基本用法。
 """
 
+import sys
+from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import asyncio
 
 from agents.browser import BrowserAgent, browse

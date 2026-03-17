@@ -103,7 +103,7 @@ class OllamaEmbedding(BaseEmbedding):
 
     def __init__(
         self,
-        model: str = "nomic-embed-text",
+        model: str = "qwen3-embedding:0.6b",
         base_url: str = "http://localhost:11434"
     ):
         """
@@ -112,7 +112,7 @@ class OllamaEmbedding(BaseEmbedding):
             base_url: Ollama 服务地址
         """
         self._model = model
-        self._base_url = base_url.rstrip("/")
+        self._base_url = (base_url or "http://localhost:11434").rstrip("/")
         self._dimension = None
 
     def embed(self, text: str) -> list[float]:
@@ -314,7 +314,7 @@ def create_embedding(
         return SentenceTransformersEmbedding(model_name=model, **kwargs)
 
     elif provider == "ollama":
-        model = model or "nomic-embed-text"
+        model = model or "qwen3-embedding:0.6b"
         return OllamaEmbedding(model=model, base_url=base_url, **kwargs)
 
     elif provider in ("openai", "openai-compatible"):

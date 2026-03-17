@@ -3,8 +3,13 @@
 展示 RAG Agent 的基本用法。
 """
 
-import asyncio
+import sys
 from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+import asyncio
 
 from agents.rag import RAGAgent
 from core.llm.factory import create_llm
@@ -21,7 +26,7 @@ def demo_rag_agent():
     # 1. 创建 LLM 和 Embedding
     print("\n[1] 初始化 LLM 和 Embedding 模型...")
     llm = create_llm("ollama", model="qwen3.5:4b", think=False)
-    embedding = create_embedding("ollama", model="nomic-embed-text")
+    embedding = create_embedding("ollama")  # 默认使用 qwen3-embedding:0.6b
 
     # 2. 创建 RAG Agent
     print("[2] 创建 RAG Agent...")
@@ -137,7 +142,7 @@ async def demo_async():
     print("=" * 60)
 
     llm = create_llm("ollama", model="qwen3.5:4b", think=False)
-    embedding = create_embedding("ollama", model="nomic-embed-text")
+    embedding = create_embedding("ollama")  # 默认使用 qwen3-embedding:0.6b
 
     agent = RAGAgent(
         llm=llm,

@@ -11,7 +11,10 @@ examples/
 ├── tools/                 # 工具使用示例
 │   ├── tool_demo.py      # 工具调用演示
 │   └── web_search.py     # 网络搜索工具示例
-└── advanced/             # 高级功能示例
+├── agents/                # Agent 类型示例
+│   ├── rag_demo.py       # RAG Agent 演示
+│   └── browser_demo.py   # Browser Agent 演示
+└── advanced/              # 高级功能示例
     └── complete_agent.py  # 完整 Agent 功能演示
 ```
 
@@ -36,7 +39,20 @@ python examples/tools/tool_demo.py
 python examples/tools/web_search.py
 ```
 
-### 3. 高级示例
+### 3. Agent 示例
+
+```bash
+# RAG Agent 演示（需要先拉取 embedding 模型）
+ollama pull qwen3-embedding:0.6b
+python examples/agents/rag_demo.py
+
+# Browser Agent 演示（需要安装 playwright）
+pip install playwright
+playwright install chromium
+python examples/agents/browser_demo.py
+```
+
+### 4. 高级示例
 
 ```bash
 # 完整 Agent 功能演示（包含多种工具）
