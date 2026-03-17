@@ -5,14 +5,15 @@ description = "A general-purpose AI Agent built from scratch"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    # 核心依赖：版本锁定确保稳定性
+    # 核心依赖
     "pydantic>=2.0,<3.0",
+    "pydantic-settings>=2.0,<3.0",
     "httpx>=0.25,<0.28",
-    "pyyaml>=6.0,<7.0",
-    "rich>=13.0,<15.0",  # 美化终端输出
-    "pydantic-settings>=2.0,<3.0",  # .env 文件支持
-    "python-dotenv>=1.0,<2.0",  # .env 文件加载
-    "python-json-logger>=2.0,<4.0",  # JSON 格式日志
+    "rich>=13.0,<15.0",
+    "python-json-logger>=2.0,<4.0",
+
+    # 内置工具依赖
+    "duckduckgo-search>=6.0,<8.0",  # 网络搜索工具
 ]
 
 [project.optional-dependencies]
@@ -21,23 +22,20 @@ dev = [
     "pytest>=7.0,<9.0",
     "pytest-asyncio>=0.21,<1.0",
     "pytest-mock>=3.10,<4.0",
+    "pytest-cov>=4.0,<5.0",
 
     # 代码质量工具
-    "ruff>=0.1.0,<0.9.0",          # Fast Python linter and formatter
-    "mypy>=1.5.0,<2.0",            # Static type checker
-
-    # 测试覆盖率
-    "pytest-cov>=4.0,<5.0",
+    "ruff>=0.1.0,<0.9.0",
+    "mypy>=1.5.0,<2.0",
 
     # Pre-commit hooks
     "pre-commit>=3.0,<4.0",
 ]
 
 webui = [
-    # Web UI 依赖
-    "fastapi>=0.100.0,<0.120.0",   # Web framework
-    "uvicorn>=0.23.0,<0.32.0",     # ASGI server
-    "websockets>=12.0,<14.0",      # WebSocket support
+    "fastapi>=0.100.0,<0.120.0",
+    "uvicorn>=0.23.0,<0.32.0",
+    "websockets>=12.0,<14.0",
 ]
 
 rag = [
@@ -45,18 +43,18 @@ rag = [
     "chromadb>=0.4.0,<0.6.0",
 
     # 文档解析
-    "pypdf>=4.0,<6.0",             # PDF
-    "python-docx>=1.0,<2.0",       # Word
-    "openpyxl>=3.0,<4.0",          # Excel
-    "python-pptx>=0.6,<1.0",       # PowerPoint
-    "Pillow>=10.0,<12.0",          # 图像
+    "pypdf>=4.0,<6.0",
+    "python-docx>=1.0,<2.0",
+    "openpyxl>=3.0,<4.0",
+    "python-pptx>=0.6,<1.0",
+    "Pillow>=10.0,<12.0",
 
-    # Embedding（可选本地模型）
+    # Embedding（本地模型）
     "sentence-transformers>=2.2,<4.0",
+    "numpy>=1.24,<3.0",
 ]
 
 browser = [
-    # 浏览器自动化
     "playwright>=1.40,<2.0",
 ]
 
@@ -71,7 +69,6 @@ packages = ["core", "agents", "config", "webui", "cli"]
 # 开发工具配置
 # ====================
 
-# Ruff 配置（替代 black + flake8 + isort）
 [tool.ruff]
 line-length = 100
 target-version = "py310"
@@ -90,26 +87,26 @@ select = [
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # 允许未使用的导入
+"__init__.py" = ["F401"]
 
-# MyPy 配置
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false  # 暂时允许无类型定义，逐步迁移
+disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = true
 warn_redundant_casts = true
 
 [[tool.mypy.overrides]]
 module = [
-    "ollama.*",  # 如果使用第三方库没有类型存根
+    "ollama.*",
     "pytest.*",
+    "chromadb.*",
+    "duckduckgo_search.*",
 ]
 ignore_missing_imports = true
 
-# Pytest 配置
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -119,17 +116,16 @@ python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "-ra",  # 显示测试摘要
-    "--ignore=tests/test_llm.py",  # 排除旧的集成测试脚本
+    "-ra",
+    "--ignore=tests/test_llm.py",
 ]
 
-# 测试覆盖率配置
 [tool.coverage.run]
 source = ["core", "agents", "config"]
 omit = [
     "tests/*",
     "*/__pycache__/*",
-    "webui/*",  # Web UI 通常是前端代码，不参与 Python 测试覆盖率
+    "webui/*",
 ]
 
 [tool.coverage.report]
