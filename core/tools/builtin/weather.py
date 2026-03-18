@@ -5,7 +5,6 @@
 """
 
 import json
-import os
 from typing import Any, Dict
 
 import httpx
@@ -16,26 +15,17 @@ from ..base import BaseTool, ToolResult
 class WeatherTool(BaseTool):
     """
     天气查询工具
-    
+
     使用 wttr.in 免费 API
     无需 API Key
-    
+
     功能：
     - 查询城市天气
     - 支持多种格式输出
-    - 自动检测代理配置
     """
     
     WTTR_URL = "https://wttr.in"
-    
-    def _get_proxy(self) -> str:
-        """获取代理配置"""
-        # 从环境变量读取代理
-        https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
-        if https_proxy:
-            return https_proxy
-        return None
-    
+
     @property
     def name(self) -> str:
         return "weather"
@@ -115,25 +105,23 @@ class WeatherTool(BaseTool):
     def _get_simple(self, city: str) -> ToolResult:
         """获取简洁格式天气"""
         url = f"{self.WTTR_URL}/{city}?format=%l:+%c+%t,+%h"
-        
-        proxy = self._get_proxy()
-        with httpx.Client(timeout=10.0, proxy=proxy) as client:
+
+        with httpx.Client(timeout=10.0) as client:
             response = client.get(url)
             response.raise_for_status()
             result = response.text.strip()
-        
+
         return ToolResult(content=result)
     
     def _get_detailed(self, city: str) -> ToolResult:
         """获取详细格式天气"""
         url = f"{self.WTTR_URL}/{city}?lang=zh"
-        
-        proxy = self._get_proxy()
-        with httpx.Client(timeout=10.0, proxy=proxy) as client:
+
+        with httpx.Client(timeout=10.0) as client:
             response = client.get(url)
             response.raise_for_status()
             result = response.text.strip()
-        
+
         # 只返回前几行（当前天气）
         lines = result.split('\n')[:7]
         return ToolResult(content='\n'.join(lines))
@@ -141,9 +129,8 @@ class WeatherTool(BaseTool):
     def _get_json(self, city: str) -> ToolResult:
         """获取 JSON 格式天气"""
         url = f"{self.WTTR_URL}/{city}?format=j1"
-        
-        proxy = self._get_proxy()
-        with httpx.Client(timeout=10.0, proxy=proxy) as client:
+
+        with httpx.Client(timeout=10.0) as client:
             response = client.get(url)
             response.raise_for_status()
             data = response.json()

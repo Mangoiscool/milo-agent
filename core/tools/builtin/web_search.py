@@ -193,33 +193,37 @@ class DuckDuckGoEngine(SearchEngine):
 class WebSearchTool(BaseTool):
     """
     网络搜索工具
-    
+
     支持多种搜索引擎：
     - tavily: AI 优化搜索（推荐，需要 API Key）
     - duckduckgo: 免费搜索（无需 API Key）
-    
+
     环境变量：
-    - TAVILY_API_KEY: Tavily API Key（使用 Tavily 时需要）
-    - SEARCH_ENGINE: 默认搜索引擎（tavily 或 duckduckgo）
+    - TAVILY_API_KEY: Tavily API Key（设置后自动使用 Tavily）
     """
     
     def __init__(
         self,
-        engine: str = "duckduckgo",
+        engine: Optional[str] = None,
         api_key: Optional[str] = None
     ):
         """
         初始化搜索工具
-        
+
         Args:
-            engine: 搜索引擎（tavily 或 duckduckgo）
+            engine: 搜索引擎（tavily 或 duckduckgo），不指定则自动检测
             api_key: API Key（仅 Tavily 需要）
         """
         super().__init__()
-        
-        # 从环境变量获取默认引擎
-        self.engine_name = engine or os.environ.get("SEARCH_ENGINE", "duckduckgo")
-        
+
+        # 自动选择引擎：有 TAVILY_API_KEY 则用 tavily，否则用 duckduckgo
+        has_tavily_key = bool(api_key or os.environ.get("TAVILY_API_KEY"))
+
+        if engine:
+            self.engine_name = engine
+        else:
+            self.engine_name = "tavily" if has_tavily_key else "duckduckgo"
+
         # 初始化搜索引擎
         if self.engine_name == "tavily":
             self._engine = TavilyEngine(api_key)

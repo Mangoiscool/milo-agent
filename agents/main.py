@@ -216,6 +216,7 @@ class MainAgent(BaseAgent):
             FileWriteTool,
             ListDirTool,
             RandomTool,
+            WeatherTool,
             WebSearchTool,
         )
 
@@ -223,6 +224,7 @@ class MainAgent(BaseAgent):
             CalculatorTool(),
             DateTimeTool(),
             RandomTool(),
+            WeatherTool(),
             WebSearchTool(engine="duckduckgo"),
             FileReadTool(),
             FileWriteTool(),
@@ -538,7 +540,7 @@ class MainAgent(BaseAgent):
         tools = self.list_tools()
 
         # 分类
-        builtin = ["calculator", "datetime", "random", "web_search", "file_read", "file_write", "list_dir", "code_execution"]
+        builtin = ["calculator", "datetime", "random", "weather", "web_search", "file_read", "file_write", "list_dir", "code_execution"]
         rag = ["knowledge_search", "knowledge_add", "knowledge_list", "knowledge_remove"]
         browser = ["browser_navigate", "browser_click", "browser_type", "browser_scroll", "browser_get_text", "browser_screenshot", "browser_wait", "browser_back"]
 
