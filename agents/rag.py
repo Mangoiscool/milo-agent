@@ -1,23 +1,37 @@
 """RAG Agent - 检索增强生成 Agent
 
 结合知识库检索能力，实现基于文档的问答。
+
+现在继承自 BaseAgent，支持工具调用，可以与其他能力组合。
 """
 
 from pathlib import Path
 from typing import Any, Optional
 
 from agents.agent_config import AgentConfig
+from agents.base import BaseAgent
 from core.llm.base import BaseLLM, Message, Role
 from core.logger import get_logger
-from core.rag.base import Chunk, Document, SearchResult
-from core.rag.document_loader import DocumentLoaderRegistry, create_default_registry
-from core.rag.embeddings import BaseEmbedding, create_embedding
-from core.rag.retriever import BaseRetriever, SimilarityRetriever, create_retriever
-from core.rag.text_splitter import BaseTextSplitter, SplitConfig, create_splitter
+from core.memory.base import BaseMemory
+from core.rag import (
+    SearchResult,
+    create_retriever,
+    create_splitter,
+)
+from core.rag.base import Document
+from core.rag.document_loader import create_default_registry
+from core.rag.embeddings import BaseEmbedding
+from core.rag.text_splitter import SplitConfig
+from core.rag.tools import (
+    RAGAddDocumentTool,
+    RAGListSourcesTool,
+    RAGRemoveSourceTool,
+    RAGSearchTool,
+)
 from core.rag.vector_store import KnowledgeBase, VectorStore
 
 
-class RAGAgent:
+class RAGAgent(BaseAgent):
     """
     RAG Agent - 检索增强生成 Agent
 
@@ -27,6 +41,7 @@ class RAGAgent:
     - 多知识库管理
     - 增量更新
     - 来源引用
+    - 支持工具调用（新增）
 
     使用示例：
         llm = create_llm("qwen", api_key="sk-xxx")
@@ -41,11 +56,11 @@ class RAGAgent:
         # 添加知识
         agent.add_document("guide.pdf")
 
-        # 问答
+        # 问答（现在支持工具调用）
         response = agent.chat("什么是 RAG？")
+        response = agent.chat_with_tools("帮我查一下相关资料")
     """
 
-    # 默认 RAG 系统提示词
     DEFAULT_SYSTEM_PROMPT = """你是一个知识库问答助手。请基于检索到的参考内容回答用户问题。
 
 回答要求：
@@ -54,12 +69,15 @@ class RAGAgent:
 3. 引用信息来源，格式为 [来源: 文档名]
 4. 回答要准确、简洁、有条理
 
+你可以使用 knowledge_search 工具来检索知识库中的相关信息。
+
 注意：不要编造信息，所有回答都应基于参考内容。"""
 
     def __init__(
         self,
         llm: BaseLLM,
         embedding_model: BaseEmbedding,
+        memory: Optional[BaseMemory] = None,
         persist_directory: str | Path = "./chroma_db",
         knowledge_base_name: str = "default",
         config: Optional[AgentConfig] = None,
@@ -74,6 +92,7 @@ class RAGAgent:
         Args:
             llm: LLM 实例
             embedding_model: Embedding 模型
+            memory: 记忆系统
             persist_directory: 向量数据库持久化目录
             knowledge_base_name: 知识库名称
             config: Agent 配置
@@ -82,15 +101,23 @@ class RAGAgent:
             top_k: 检索返回的文档数量
             splitter_config: 文本切分配置
         """
-        self.llm = llm
+        # 保存 RAG 特有属性
         self.embedding_model = embedding_model
         self.persist_directory = Path(persist_directory)
         self.knowledge_base_name = knowledge_base_name
-        self.config = config or AgentConfig()
-        self.system_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
         self.top_k = top_k
 
-        self.logger = get_logger(self.__class__.__name__)
+        # 使用默认系统提示词
+        effective_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
+
+        # 初始化基类
+        super().__init__(
+            llm=llm,
+            memory=memory,
+            tools=None,  # 稍后注册 RAG 工具
+            system_prompt=effective_prompt,
+            config=config or AgentConfig()
+        )
 
         # 文档加载器
         self.document_loader = create_default_registry()
@@ -115,7 +142,15 @@ class RAGAgent:
             retriever_type
         )
 
-        # 对话历史（简单的内存存储）
+        # 注册 RAG 工具
+        self.register_tools([
+            RAGSearchTool(self.retriever),
+            RAGAddDocumentTool(self.vector_store, self.splitter, self.document_loader),
+            RAGListSourcesTool(self.vector_store),
+            RAGRemoveSourceTool(self.vector_store),
+        ])
+
+        # 对话历史（用于 RAG 特有的上下文构建）
         self.conversation_history: list[Message] = []
 
     # ═══════════════════════════════════════════════════════════════
@@ -335,7 +370,7 @@ class RAGAgent:
 
     def chat(self, query: str) -> str:
         """
-        RAG 对话
+        RAG 对话（自动检索 + 回答）
 
         Args:
             query: 用户问题
@@ -417,6 +452,7 @@ class RAGAgent:
     def clear_history(self):
         """清空对话历史"""
         self.conversation_history = []
+        super().clear_history()
 
     # ═══════════════════════════════════════════════════════════════
     # 工具方法
@@ -437,6 +473,9 @@ class RAGAgent:
             "embedding_model": self.embedding_model.model_name,
             "embedding_dimension": self.embedding_model.dimension,
         }
+
+    def __repr__(self) -> str:
+        return f"<RAGAgent llm={self.llm} docs={self.get_document_count()} tools={self.tool_registry.count()}>"
 
 
 class MultiKnowledgeBaseManager:
@@ -557,3 +596,6 @@ class MultiKnowledgeBaseManager:
                 "document_count": kb.document_count,
             }
         return stats
+
+
+__all__ = ["RAGAgent", "MultiKnowledgeBaseManager"]

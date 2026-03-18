@@ -50,6 +50,12 @@ from .text_splitter import (
     create_splitter,
 )
 from .vector_store import KnowledgeBase, VectorStore
+from .tools import (
+    RAGSearchTool,
+    RAGAddDocumentTool,
+    RAGListSourcesTool,
+    RAGRemoveSourceTool,
+)
 
 __all__ = [
     # Base
@@ -92,4 +98,9 @@ __all__ = [
     "MMRRetriever",
     "HybridRetriever",
     "create_retriever",
+    # RAG Tools
+    "RAGSearchTool",
+    "RAGAddDocumentTool",
+    "RAGListSourcesTool",
+    "RAGRemoveSourceTool",
 ]

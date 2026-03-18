@@ -2,6 +2,25 @@
 
 本目录包含了 Milo Agent 的示例，按学习顺序编号。
 
+## 🏗️ Agent 架构
+
+Milo Agent 采用统一的架构设计：
+
+```
+BaseAgent (抽象基类)
+├── 核心能力：LLM、Memory、ToolRegistry
+├── 对话接口：chat/achat/astream
+└── 工具调用循环
+
+├── SimpleAgent - 基础对话 Agent
+├── MainAgent - 统一的 Main Agent（推荐）
+│   ├── 内置工具（默认启用）
+│   ├── RAG 能力（可选）
+│   └── Browser 能力（可选）
+├── RAGAgent - 知识库问答 Agent
+└── BrowserAgent - 浏览器自动化 Agent
+```
+
 ## 📚 文件列表
 
 | 文件 | 说明 |
@@ -11,6 +30,7 @@
 | `03_web_search_demo.py` | 网络搜索 - DuckDuckGo 搜索工具 |
 | `04_rag_agent_demo.py` | RAG Agent - 知识库问答 |
 | `05_browser_agent_demo.py` | Browser Agent - 网页自动化 |
+| `06_main_agent_demo.py` | **MainAgent - 统一的 Agent（推荐）** |
 
 ## 🚀 快速开始
 
@@ -32,6 +52,9 @@ python examples/04_rag_agent_demo.py
 # 5. Browser Agent 演示（需要安装 playwright）
 pip install playwright && playwright install chromium
 python examples/05_browser_agent_demo.py
+
+# 6. MainAgent 演示（统一的 Agent）
+python examples/06_main_agent_demo.py
 ```
 
 ## 💡 运行说明
@@ -43,3 +66,48 @@ python examples/05_browser_agent_demo.py
    export QWEN_API_KEY="your-api-key"
    export GLM_API_KEY="your-api-key"
    ```
+
+## 🎯 推荐使用 MainAgent
+
+MainAgent 是统一的 Agent 实现，可以组合多种能力：
+
+```python
+from agents import MainAgent
+from core.llm.factory import create_llm
+from core.rag import create_embedding
+
+llm = create_llm("qwen", api_key="...")
+embedding = create_embedding("ollama", model="nomic-embed-text")
+
+# 创建具备所有能力的 Agent
+agent = MainAgent(
+    llm=llm,
+    enable_rag=True,           # 启用知识库
+    embedding_model=embedding,
+    enable_browser=True        # 启用浏览器
+)
+
+# 添加知识
+agent.add_document("company_guide.pdf")
+
+# 对话
+response = agent.chat_with_tools("帮我查一下公司的请假流程")
+```
+
+### MainAgent 可用工具
+
+| 类别 | 工具 | 说明 |
+|------|------|------|
+| **内置** | calculator | 计算器 |
+| | datetime | 日期时间 |
+| | web_search | 网络搜索 |
+| | file_read/write | 文件操作 |
+| | code_execution | 代码执行 |
+| **RAG** | knowledge_search | 检索知识库 |
+| | knowledge_add | 添加文档 |
+| | knowledge_list | 列出文档来源 |
+| | knowledge_remove | 移除文档 |
+| **Browser** | browser_navigate | 导航 |
+| | browser_click | 点击 |
+| | browser_type | 输入 |
+| | browser_screenshot | 截图 |

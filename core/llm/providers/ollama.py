@@ -68,7 +68,7 @@ class OllamaLLM(BaseLLM):
         """
         body = {
             "model": self.model,
-            "messages": [m.to_api_format() for m in messages],
+            "messages": [self._format_message_for_ollama(m) for m in messages],
             "stream": stream,
             "options": {
                 "temperature": self.temperature,
@@ -94,6 +94,45 @@ class OllamaLLM(BaseLLM):
             ]
 
         return body
+
+    def _format_message_for_ollama(self, message: Message) -> dict:
+        """
+        将消息格式化为 Ollama 兼容格式
+
+        Ollama 与 OpenAI 的主要区别：
+        1. tool_calls 不需要 "type": "function" 字段
+        2. tool 消息不需要 tool_call_id，使用 name 字段标识工具
+        """
+        from ..base import Role
+
+        result = {"role": message.role.value}
+
+        # content
+        if message.content is not None:
+            result["content"] = message.content
+
+        # tool 消息：Ollama 只需要 role, content, name
+        if message.role == Role.TOOL:
+            if message.name:
+                result["name"] = message.name
+            # 不包含 tool_call_id，Ollama 不支持
+        elif message.name:
+            result["name"] = message.name
+
+        # assistant 消息的 tool_calls - Ollama 格式不需要 "type" 字段
+        if message.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "function": {
+                        "name": tc.name,
+                        "arguments": tc.arguments  # Ollama 直接用 dict，不需要 JSON 字符串
+                    }
+                }
+                for tc in message.tool_calls
+            ]
+
+        return result
 
     def chat(self, messages: List[Message]) -> LLMResponse:
         """同步对话"""

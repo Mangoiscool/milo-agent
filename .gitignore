@@ -46,3 +46,6 @@ htmlcov/
 
 # Logs
 *.log
+
+# Vector database (RAG)
+knowledge_base/
