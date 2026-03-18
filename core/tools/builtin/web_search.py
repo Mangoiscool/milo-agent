@@ -94,14 +94,20 @@ class DuckDuckGoEngine(SearchEngine):
     API_URL = "https://api.duckduckgo.com/"
     
     def __init__(self):
-        # 尝试使用 duckduckgo-search 库（更可靠）
+        # 尝试使用 ddgs 库（新版 duckduckgo-search）
         self._use_library = False
         try:
-            from duckduckgo_search import DDGS
+            from ddgs import DDGS
             self._ddgs = DDGS()
             self._use_library = True
         except ImportError:
-            pass  # 使用 HTTP API
+            try:
+                # 兼容旧版包名
+                from duckduckgo_search import DDGS
+                self._ddgs = DDGS()
+                self._use_library = True
+            except ImportError:
+                pass  # 使用 HTTP API
     
     def search(self, query: str, max_results: int = 5) -> List[Dict[str, str]]:
         """执行 DuckDuckGo 搜索"""
@@ -111,18 +117,37 @@ class DuckDuckGoEngine(SearchEngine):
             return self._search_with_api(query, max_results)
     
     def _search_with_library(self, query: str, max_results: int) -> List[Dict[str, str]]:
-        """使用 duckduckgo-search 库"""
-        from duckduckgo_search import DDGS
-        
+        """使用 ddgs/duckduckgo-search 库"""
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
+
         results = []
         with DDGS() as ddgs:
-            for r in ddgs.text(query, max_results=max_results):
-                results.append({
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", ""),
-                })
-        
+            # 首先尝试普通搜索
+            try:
+                for r in ddgs.text(query, max_results=max_results):
+                    results.append({
+                        "title": r.get("title", ""),
+                        "url": r.get("href", ""),
+                        "snippet": r.get("body", ""),
+                    })
+            except Exception:
+                pass
+
+            # 如果普通搜索无结果，尝试新闻搜索
+            if not results:
+                try:
+                    for r in ddgs.news(query, max_results=max_results):
+                        results.append({
+                            "title": r.get("title", ""),
+                            "url": r.get("url", r.get("href", "")),
+                            "snippet": r.get("body", r.get("description", "")),
+                        })
+                except Exception:
+                    pass
+
         return results
     
     def _search_with_api(self, query: str, max_results: int) -> List[Dict[str, str]]:

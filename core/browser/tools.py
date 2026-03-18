@@ -3,12 +3,31 @@
 提供可被 Agent 调用的浏览器工具。
 """
 
+import asyncio
+import concurrent.futures
 from typing import Any, Optional
 
 from core.tools.base import BaseTool, ToolResult
 
 from .base import BrowserActionResult, ScrollDirection
 from .controller import BrowserController
+
+
+def _run_async(coro):
+    """
+    在同步上下文中运行异步协程
+
+    处理已有事件循环的情况（如 FastAPI）
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        # 已有运行中的事件循环，使用线程池执行
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
+    except RuntimeError:
+        # 没有运行中的事件循环
+        return asyncio.run(coro)
 
 
 class BrowserNavigateTool(BaseTool):
@@ -39,15 +58,8 @@ class BrowserNavigateTool(BaseTool):
         self.controller = controller
 
     def execute(self, url: str) -> ToolResult:
-        """同步执行（需要事件循环）"""
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(self.aexecute(url=url))
+        """同步执行"""
+        return _run_async(self.aexecute(url=url))
 
     async def aexecute(self, url: str) -> ToolResult:
         """异步执行"""
@@ -87,14 +99,7 @@ class BrowserClickTool(BaseTool):
         self.controller = controller
 
     def execute(self, selector: str, description: str = "") -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(self.aexecute(selector=selector))
+        return _run_async(self.aexecute(selector=selector))
 
     async def aexecute(self, selector: str, description: str = "") -> ToolResult:
         result = await self.controller.click(selector)
@@ -142,14 +147,7 @@ class BrowserTypeTool(BaseTool):
         text: str,
         press_enter: bool = False
     ) -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
+        return _run_async(
             self.aexecute(selector=selector, text=text, press_enter=press_enter)
         )
 
@@ -192,14 +190,7 @@ class BrowserScrollTool(BaseTool):
         self.controller = controller
 
     def execute(self, direction: str) -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(self.aexecute(direction=direction))
+        return _run_async(self.aexecute(direction=direction))
 
     async def aexecute(self, direction: str) -> ToolResult:
         direction_map = {
@@ -240,14 +231,7 @@ class BrowserGetTextTool(BaseTool):
         self.controller = controller
 
     def execute(self, selector: str = "") -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
+        return _run_async(
             self.aexecute(selector=selector if selector else None)
         )
 
@@ -283,14 +267,7 @@ class BrowserScreenshotTool(BaseTool):
         self.controller = controller
 
     def execute(self, full_page: bool = False) -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(self.aexecute(full_page=full_page))
+        return _run_async(self.aexecute(full_page=full_page))
 
     async def aexecute(self, full_page: bool = False) -> ToolResult:
         result = await self.controller.screenshot(full_page=full_page)
@@ -328,14 +305,7 @@ class BrowserWaitTool(BaseTool):
         self.controller = controller
 
     def execute(self, seconds: float = 1.0, selector: str = "") -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
+        return _run_async(
             self.aexecute(seconds=seconds, selector=selector if selector else None)
         )
 
@@ -370,14 +340,7 @@ class BrowserBackTool(BaseTool):
         self.controller = controller
 
     def execute(self) -> ToolResult:
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(self.aexecute())
+        return _run_async(self.aexecute())
 
     async def aexecute(self) -> ToolResult:
         result = await self.controller.back()

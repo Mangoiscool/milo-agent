@@ -6,26 +6,19 @@ FastAPI backend with WebSocket streaming support
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import Dict, Optional, Set
+from typing import Dict, Optional
 from uuid import uuid4
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from core.llm.factory import create_llm
-from core.llm.base import Message, Role, ToolCall
-from agents.simple import SimpleAgent, AgentConfig, AgentEvent
-from core.tools import ToolRegistry
-from core.tools.builtin import (
-    CalculatorTool,
-    WeatherTool,
-    WebSearchTool,
-    FileReadTool,
-    CodeExecutionTool
-)
+from core.llm.base import Message, Role
+from agents.main import MainAgent
+from core.rag import create_embedding
+from core.browser import BrowserConfig
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -41,6 +34,8 @@ class ProviderConfig(BaseModel):
     provider: str = "qwen"
     api_key: Optional[str] = None
     model: Optional[str] = None
+    enable_rag: bool = False
+    enable_browser: bool = False
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -90,60 +85,67 @@ class AgentManager:
     """管理 Agent 实例"""
 
     def __init__(self):
-        self.agents: Dict[str, SimpleAgent] = {}
+        self.agents: Dict[str, MainAgent] = {}
 
-    def create_agent(self, session_id: str, provider: str = "qwen", api_key: Optional[str] = None, model: Optional[str] = None) -> SimpleAgent:
+    async def create_agent(
+        self,
+        session_id: str,
+        provider: str = "qwen",
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        enable_rag: bool = False,
+        enable_browser: bool = False
+    ) -> MainAgent:
         """为会话创建新 Agent"""
+        # 创建 LLM
         if provider == "ollama":
             llm = create_llm("ollama", model=model or "qwen3.5:4b")
-            # Ollama 不支持工具调用
-            agent = SimpleAgent(llm, config=AgentConfig(system_prompt="你是一个有用的助手。"))
         else:
-            # API 提供者
             key = api_key or os.environ.get(f"{provider.upper()}_API_KEY")
             if not key:
                 raise ValueError(f"需要设置 {provider.upper()}_API_KEY")
-
             llm = create_llm(provider, api_key=key, model=model)
 
-            # 注册工具
-            registry = ToolRegistry()
-            registry.register(CalculatorTool())
-            registry.register(WeatherTool())
-            registry.register(WebSearchTool(engine="duckduckgo"))
-            registry.register(FileReadTool())
-            registry.register(CodeExecutionTool())
+        # 创建 embedding（如果启用 RAG）
+        embedding_model = None
+        if enable_rag:
+            try:
+                embedding_model = create_embedding("ollama", model="nomic-embed-text")
+            except Exception as e:
+                print(f"[WARN] Failed to create embedding model: {e}, RAG disabled")
+                enable_rag = False
 
-            # 简化的系统提示词
-            system_prompt = """你是一个有用的 AI 助手。你必须使用可用的工具来回答用户的问题：
+        # 创建 MainAgent
+        browser_config = None
+        if enable_browser:
+            # 非无头模式，用户可以看到浏览器窗口
+            browser_config = BrowserConfig(headless=False)
 
-- 计算 → calculator 工具
-- 天气查询 → weather 工具
-- 网络搜索 → web_search 工具
-- 读取文件 → file_read 工具
-- 执行代码 → code_execute 工具
+        agent = MainAgent(
+            llm=llm,
+            enable_builtin_tools=True,
+            enable_rag=enable_rag,
+            embedding_model=embedding_model,
+            enable_browser=enable_browser,
+            browser_config=browser_config
+        )
 
-重要：
-1. 当用户需要计算、查询天气、搜索等时，必须调用相应工具
-2. 不要自己计算或猜测，使用工具获取准确结果
-3. 直接回答用户的问题，不要介绍自己"""
-
-            agent = SimpleAgent(
-                llm,
-                tools=list(registry._tools.values()),
-                config=AgentConfig(system_prompt=system_prompt)
-            )
+        # 注意：浏览器会在首次使用时自动初始化（懒加载）
 
         self.agents[session_id] = agent
         return agent
 
-    def get_agent(self, session_id: str) -> Optional[SimpleAgent]:
+    def get_agent(self, session_id: str) -> Optional[MainAgent]:
         """获取会话的 Agent"""
         return self.agents.get(session_id)
 
-    def remove_agent(self, session_id: str) -> None:
+    async def remove_agent(self, session_id: str) -> None:
         """移除会话的 Agent"""
         if session_id in self.agents:
+            agent = self.agents[session_id]
+            # 如果启用了 Browser，需要清理
+            if agent.enable_browser:
+                await agent.close()
             del self.agents[session_id]
 
 
@@ -195,16 +197,26 @@ async def create_agent(config: ProviderConfig):
     """创建新 Agent 会话"""
     session_id = str(uuid4())
     try:
-        agent = agent_manager.create_agent(
+        agent = await agent_manager.create_agent(
             session_id=session_id,
             provider=config.provider,
             api_key=config.api_key,
-            model=config.model
+            model=config.model,
+            enable_rag=config.enable_rag,
+            enable_browser=config.enable_browser
         )
+        tool_info = agent.get_tool_info()
         return {
             "success": True,
             "session_id": session_id,
-            "tools": agent.list_tools()
+            "tools": tool_info["all_tools"],
+            "builtin_tools": tool_info["builtin_tools"],
+            "rag_tools": tool_info["rag_tools"],
+            "browser_tools": tool_info["browser_tools"],
+            "capabilities": {
+                "rag": agent.enable_rag,
+                "browser": agent.enable_browser
+            }
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -215,8 +227,36 @@ async def get_tools(session_id: str):
     """获取 Agent 可用工具"""
     agent = agent_manager.get_agent(session_id)
     if agent:
-        return {"tools": agent.list_tools()}
+        tool_info = agent.get_tool_info()
+        return {
+            "tools": tool_info["all_tools"],
+            "builtin_tools": tool_info["builtin_tools"],
+            "rag_tools": tool_info["rag_tools"],
+            "browser_tools": tool_info["browser_tools"]
+        }
     return {"tools": []}
+
+
+@app.get("/api/agent/{session_id}/capabilities")
+async def get_capabilities(session_id: str):
+    """获取 Agent 能力状态"""
+    agent = agent_manager.get_agent(session_id)
+    if agent:
+        return {
+            "rag_enabled": agent.enable_rag,
+            "browser_enabled": agent.enable_browser,
+            "tools_count": len(agent.list_tools())
+        }
+    return {"rag_enabled": False, "browser_enabled": False, "tools_count": 0}
+
+
+@app.get("/api/agent/{session_id}/knowledge-base")
+async def get_knowledge_base(session_id: str):
+    """获取知识库信息"""
+    agent = agent_manager.get_agent(session_id)
+    if agent and agent.enable_rag:
+        return agent.get_knowledge_base_stats()
+    return {"enabled": False}
 
 
 @app.websocket("/ws/chat/{session_id}")
@@ -224,13 +264,14 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
     """WebSocket 聊天接口"""
     await manager.connect(session_id, websocket)
 
+    agent = None
     try:
         # 检查 Agent 是否存在，不存在则创建默认的
         agent = agent_manager.get_agent(session_id)
         if agent is None:
             # 默认使用 qwen，如果没有 API key 则用 ollama
             provider = "ollama" if not os.environ.get("QWEN_API_KEY") else "qwen"
-            agent = agent_manager.create_agent(session_id=session_id, provider=provider)
+            agent = await agent_manager.create_agent(session_id=session_id, provider=provider)
             await manager.send(session_id, {
                 "type": "info",
                 "message": f"使用 {provider} 模型",
@@ -244,18 +285,32 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
             if data.get("type") == "config":
                 provider = data.get("provider", "ollama")
                 api_key = data.get("api_key")
+                enable_rag = data.get("enable_rag", False)
+                enable_browser = data.get("enable_browser", False)
                 try:
                     # 重新创建 Agent 使用新的配置
-                    agent_manager.remove_agent(session_id)
-                    agent = agent_manager.create_agent(
+                    await agent_manager.remove_agent(session_id)
+                    agent = await agent_manager.create_agent(
                         session_id=session_id,
                         provider=provider,
-                        api_key=api_key
+                        api_key=api_key,
+                        enable_rag=enable_rag,
+                        enable_browser=enable_browser
                     )
+                    capabilities = []
+                    if enable_rag:
+                        capabilities.append("RAG")
+                    if enable_browser:
+                        capabilities.append("Browser")
+                    cap_str = f" ({', '.join(capabilities)})" if capabilities else ""
                     await manager.send(session_id, {
                         "type": "info",
-                        "message": f"已切换到 {provider} 模型",
-                        "provider": provider
+                        "message": f"已切换到 {provider} 模型{cap_str}",
+                        "provider": provider,
+                        "capabilities": {
+                            "rag": enable_rag,
+                            "browser": enable_browser
+                        }
                     })
                     await manager.send(session_id, {"type": "config_ack"})
                 except Exception as e:
@@ -266,9 +321,6 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                 continue
 
             message = data.get("message", "")
-            if not message:
-                continue
-
             if not message:
                 continue
 
@@ -335,7 +387,7 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                                 "args": str(tool_call.arguments)
                             })
 
-                            result = agent.tool_registry.execute(tool_call.name, **tool_call.arguments)
+                            result = await agent.tool_registry.aexecute(tool_call.name, **tool_call.arguments)
 
                             await manager.send(session_id, {
                                 "type": "tool_result",
@@ -369,6 +421,9 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
     except Exception as e:
         await manager.send(session_id, {"type": "error", "message": str(e)})
     finally:
+        # 清理资源
+        if agent and agent.enable_browser:
+            await agent.close()
         manager.disconnect(session_id)
 
 

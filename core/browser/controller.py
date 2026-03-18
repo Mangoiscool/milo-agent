@@ -97,6 +97,11 @@ class BrowserController:
         if not self._initialized:
             raise RuntimeError("Browser not initialized. Call initialize() first.")
 
+    async def _lazy_initialize(self):
+        """懒加载初始化 - 第一次使用时自动初始化"""
+        if not self._initialized:
+            await self.initialize()
+
     # ═══════════════════════════════════════════════════════════════
     # 页面导航
     # ═══════════════════════════════════════════════════════════════
@@ -111,7 +116,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             # 确保 URL 有协议
@@ -134,7 +139,7 @@ class BrowserController:
 
     async def back(self) -> BrowserActionResult:
         """后退"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.go_back()
@@ -153,7 +158,7 @@ class BrowserController:
 
     async def forward(self) -> BrowserActionResult:
         """前进"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.go_forward()
@@ -172,7 +177,7 @@ class BrowserController:
 
     async def refresh(self) -> BrowserActionResult:
         """刷新页面"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.reload()
@@ -208,7 +213,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.click(selector, timeout=timeout or self.config.timeout)
@@ -251,7 +256,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             if clear_first:
@@ -285,7 +290,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.keyboard.press(key)
@@ -306,7 +311,7 @@ class BrowserController:
 
     async def hover(self, selector: str) -> BrowserActionResult:
         """悬停"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.hover(selector)
@@ -327,7 +332,7 @@ class BrowserController:
         value: str
     ) -> BrowserActionResult:
         """下拉选择"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.select_option(selector, value)
@@ -357,7 +362,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             if direction == ScrollDirection.UP:
@@ -394,7 +399,7 @@ class BrowserController:
         timeout: Optional[int] = None
     ) -> BrowserActionResult:
         """等待元素出现"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             await self._page.wait_for_selector(
@@ -418,7 +423,7 @@ class BrowserController:
 
     async def get_page_state(self) -> PageState:
         """获取当前页面状态"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         url = self._page.url
         title = await self._page.title()
@@ -528,7 +533,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             if selector:
@@ -549,7 +554,7 @@ class BrowserController:
 
     async def get_html(self, selector: Optional[str] = None) -> BrowserActionResult:
         """获取 HTML"""
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             if selector:
@@ -587,7 +592,7 @@ class BrowserController:
         Returns:
             操作结果
         """
-        self._ensure_initialized()
+        await self._lazy_initialize()
 
         try:
             screenshot_bytes = await self._page.screenshot(

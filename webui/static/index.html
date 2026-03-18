@@ -511,6 +511,48 @@
             font-size: 24px;
             margin-right: 10px;
         }
+
+        /* Capability Toggles */
+        .capability-toggles {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .toggle-label:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .toggle-label input {
+            display: none;
+        }
+
+        .toggle-label input:checked + .toggle-text {
+            color: white;
+        }
+
+        .toggle-label:has(input:checked) {
+            background: rgba(76, 175, 80, 0.5);
+            color: white;
+        }
+
+        .toggle-text {
+            transition: color 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -533,6 +575,16 @@
                 </select>
                 <input type="password" class="api-key-input hidden" id="apiKeyInput" placeholder="输入 API Key">
                 <button class="btn btn-confirm hidden" id="confirmApiKeyBtn">确认</button>
+                <div class="capability-toggles">
+                    <label class="toggle-label" title="知识库检索能力">
+                        <input type="checkbox" id="enableRag">
+                        <span class="toggle-text">📚 RAG</span>
+                    </label>
+                    <label class="toggle-label" title="网页自动化能力">
+                        <input type="checkbox" id="enableBrowser">
+                        <span class="toggle-text">🌐 Browser</span>
+                    </label>
+                </div>
                 <button class="btn btn-primary" id="newChatBtn">新对话</button>
                 <button class="btn btn-primary" id="exportBtn">📥 导出</button>
             </div>
@@ -542,7 +594,10 @@
         <div class="chat-area" id="chatArea">
             <div class="welcome" id="welcome">
                 <h2>👋 你好！我是 Milo Agent</h2>
-                <p>我可以帮你完成各种任务，包括计算、查询天气、搜索信息等。</p>
+                <p>我可以帮你完成各种任务，包括计算、查询天气、搜索信息、知识库检索、网页自动化等。</p>
+                <p style="font-size: 13px; color: #888; margin-bottom: 15px;">
+                    💡 提示：勾选上方的 <strong>📚 RAG</strong> 启用知识库检索，勾选 <strong>🌐 Browser</strong> 启用网页自动化
+                </p>
                 <div class="suggestions">
                     <div class="suggestion" onclick="sendSuggestion('帮我计算 123 × 456')">🧮 计算 123 × 456</div>
                     <div class="suggestion" onclick="sendSuggestion('北京今天天气怎么样？')">🌤️ 北京天气</div>
@@ -595,6 +650,8 @@
         const apiKeyInput = document.getElementById('apiKeyInput');
         const confirmApiKeyBtn = document.getElementById('confirmApiKeyBtn');
         const welcome = document.getElementById('welcome');
+        const enableRagCheckbox = document.getElementById('enableRag');
+        const enableBrowserCheckbox = document.getElementById('enableBrowser');
 
         // ═══════════════════════════════════════════════════════════════
         // WebSocket Connection
@@ -621,11 +678,13 @@
                 statusDot.classList.add('connected');
                 statusText.textContent = '连接中...';
 
-                // 发送配置消息（provider 和 api_key）
+                // 发送配置消息（provider、api_key 和能力开关）
                 ws.send(JSON.stringify({
                     type: 'config',
                     provider: provider,
-                    api_key: apiKey
+                    api_key: apiKey,
+                    enable_rag: enableRagCheckbox.checked,
+                    enable_browser: enableBrowserCheckbox.checked
                 }));
 
                 console.log('WebSocket connected');
@@ -697,7 +756,9 @@
             ws.send(JSON.stringify({
                 type: 'config',
                 provider: provider,
-                api_key: apiKey
+                api_key: apiKey,
+                enable_rag: enableRagCheckbox.checked,
+                enable_browser: enableBrowserCheckbox.checked
             }));
         }
 
@@ -735,6 +796,11 @@
                     if (data.provider) {
                         providerSelect.value = data.provider;
                         toggleApiKeyInput();
+                    }
+                    // 更新能力开关状态
+                    if (data.capabilities) {
+                        enableRagCheckbox.checked = data.capabilities.rag || false;
+                        enableBrowserCheckbox.checked = data.capabilities.browser || false;
                     }
                     break;
                 case 'config_ack':
@@ -890,6 +956,19 @@
             } else {
                 // 其他 provider 等待用户输入 API Key
                 apiKeyInput.focus();
+            }
+        });
+
+        // 能力开关变化时更新配置
+        enableRagCheckbox.addEventListener('change', () => {
+            if (isConnected && isConfigured) {
+                sendConfig();
+            }
+        });
+
+        enableBrowserCheckbox.addEventListener('change', () => {
+            if (isConnected && isConfigured) {
+                sendConfig();
             }
         });
 
