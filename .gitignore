@@ -50,5 +50,6 @@ htmlcov/
 # Vector database (RAG)
 # knowledge_base/ # 已迁移到 workspace/knowledge_base
 
-# Workspace - 只保留目录结构，不追踪任何内容
-workspace/
+# Workspace - 保留目录结构，但不追踪内容
+workspace/*
+!workspace/.gitkeep
