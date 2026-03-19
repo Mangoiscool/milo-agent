@@ -10,6 +10,20 @@ from typing import Any, Optional
 
 from agents.agent_config import AgentConfig
 from agents.base import BaseAgent
+
+
+# 获取项目根目录
+def _get_project_root() -> Path:
+    """获取项目根目录"""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return Path.cwd()
+
+
+PROJECT_ROOT = _get_project_root()
+DEFAULT_PERSIST_DIR = PROJECT_ROOT / "workspace" / "knowledge_base"
 from core.llm.base import BaseLLM, Message, Role
 from core.logger import get_logger
 from core.memory.base import BaseMemory
@@ -78,7 +92,7 @@ class RAGAgent(BaseAgent):
         llm: BaseLLM,
         embedding_model: BaseEmbedding,
         memory: Optional[BaseMemory] = None,
-        persist_directory: str | Path = "./chroma_db",
+        persist_directory: str | Path | None = None,
         knowledge_base_name: str = "default",
         config: Optional[AgentConfig] = None,
         system_prompt: Optional[str] = None,
@@ -93,7 +107,7 @@ class RAGAgent(BaseAgent):
             llm: LLM 实例
             embedding_model: Embedding 模型
             memory: 记忆系统
-            persist_directory: 向量数据库持久化目录
+            persist_directory: 向量数据库持久化目录（默认为 workspace/knowledge_base）
             knowledge_base_name: 知识库名称
             config: Agent 配置
             system_prompt: 自定义系统提示词
@@ -103,7 +117,7 @@ class RAGAgent(BaseAgent):
         """
         # 保存 RAG 特有属性
         self.embedding_model = embedding_model
-        self.persist_directory = Path(persist_directory)
+        self.persist_directory = Path(persist_directory or DEFAULT_PERSIST_DIR)
         self.knowledge_base_name = knowledge_base_name
         self.top_k = top_k
 

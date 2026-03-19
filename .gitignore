@@ -48,4 +48,12 @@ htmlcov/
 *.log
 
 # Vector database (RAG)
-knowledge_base/
+# knowledge_base/ # 已迁移到 workspace/knowledge_base
+
+# Workspace - 只保留目录，不追踪内容
+workspace/*
+!workspace/.gitkeep
+!workspace/browser_use/
+!workspace/browser_use/.gitkeep
+!workspace/browser_use/screenshots/
+!workspace/browser_use/screenshots/.gitkeep

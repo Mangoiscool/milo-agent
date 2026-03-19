@@ -34,6 +34,20 @@ from typing import Any, List, Optional
 
 from agents.agent_config import AgentConfig
 from agents.base import AgentEvent, BaseAgent
+
+
+# 获取项目根目录
+def _get_project_root() -> Path:
+    """获取项目根目录"""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return Path.cwd()
+
+
+PROJECT_ROOT = _get_project_root()
+DEFAULT_PERSIST_DIR = PROJECT_ROOT / "workspace" / "knowledge_base"
 from core.browser import BrowserConfig, BrowserController
 from core.browser.tools import (
     BrowserBackTool,
@@ -176,7 +190,7 @@ class MainAgent(BaseAgent):
         self.enable_rag = enable_rag
         self.enable_browser = enable_browser
         self.knowledge_base_name = knowledge_base_name
-        self.persist_directory = persist_directory
+        self.persist_directory = persist_directory or str(DEFAULT_PERSIST_DIR)
 
         # ═══════════════════════════════════════════════════════════════
         # 注册工具
@@ -248,17 +262,20 @@ class MainAgent(BaseAgent):
 
         Args:
             embedding_model: Embedding 模型
-            persist_directory: 持久化目录
+            persist_directory: 持久化目录（默认为 workspace/knowledge_base）
             knowledge_base_name: 知识库名称
             retriever_type: 检索器类型
             splitter_config: 切分配置
         """
         self.embedding_model = embedding_model
 
+        # 设置默认持久化目录
+        effective_persist_dir = persist_directory or str(DEFAULT_PERSIST_DIR)
+
         # 向量存储
         self.vector_store = VectorStore(
             collection_name=knowledge_base_name,
-            persist_directory=persist_directory,
+            persist_directory=effective_persist_dir,
             embedding_model=embedding_model
         )
 

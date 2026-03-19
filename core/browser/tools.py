@@ -5,12 +5,33 @@
 
 import asyncio
 import concurrent.futures
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from core.tools.base import BaseTool, ToolResult
 
 from .base import BrowserActionResult, ScrollDirection
 from .controller import BrowserController
+
+
+# 获取默认截图保存目录
+def _get_screenshot_dir() -> Path:
+    """获取截图保存目录"""
+    # 获取项目根目录
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            screenshot_dir = parent / "workspace" / "browser_use" / "screenshots"
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+            return screenshot_dir
+    # 如果找不到项目根目录，使用当前目录
+    screenshot_dir = Path.cwd() / "workspace" / "browser_use" / "screenshots"
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+    return screenshot_dir
+
+
+SCREENSHOT_DIR = _get_screenshot_dir()
 
 
 def _run_async(coro):
@@ -249,7 +270,14 @@ class BrowserScreenshotTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "截取当前页面的截图"
+        return f"""截取当前页面的截图并保存到文件。
+
+保存位置: workspace/browser_use/screenshots/
+
+参数：
+- full_page: 是否截取整个页面（包括需要滚动的部分）
+
+返回截图文件的保存路径。"""
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -259,6 +287,10 @@ class BrowserScreenshotTool(BaseTool):
                 "full_page": {
                     "type": "boolean",
                     "description": "是否截取整个页面（包括需要滚动的部分）"
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "自定义文件名（可选，默认自动生成时间戳文件名）"
                 }
             }
         }
@@ -266,12 +298,35 @@ class BrowserScreenshotTool(BaseTool):
     def __init__(self, controller: BrowserController):
         self.controller = controller
 
-    def execute(self, full_page: bool = False) -> ToolResult:
-        return _run_async(self.aexecute(full_page=full_page))
+    def execute(self, full_page: bool = False, filename: Optional[str] = None) -> ToolResult:
+        return _run_async(self.aexecute(full_page=full_page, filename=filename))
 
-    async def aexecute(self, full_page: bool = False) -> ToolResult:
-        result = await self.controller.screenshot(full_page=full_page)
-        return self._to_tool_result(result)
+    async def aexecute(self, full_page: bool = False, filename: Optional[str] = None) -> ToolResult:
+        # 生成文件名
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"screenshot_{timestamp}.png"
+
+        # 确保文件名以 .png 结尾
+        if not filename.endswith(".png"):
+            filename += ".png"
+
+        # 构建保存路径
+        save_path = SCREENSHOT_DIR / filename
+
+        # 截图并保存
+        result = await self.controller.screenshot(path=str(save_path), full_page=full_page)
+
+        if result.success:
+            return ToolResult(
+                content=f"截图已保存: {save_path}"
+            )
+        else:
+            return ToolResult(
+                content="",
+                is_error=True,
+                error_message=result.message
+            )
 
 
 class BrowserWaitTool(BaseTool):

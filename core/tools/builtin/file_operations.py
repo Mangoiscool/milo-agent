@@ -2,6 +2,8 @@
 文件操作工具
 
 功能：读写文件、列出目录、创建文件等
+
+工作目录：默认为项目根目录下的 workspace 目录
 """
 
 import os
@@ -9,6 +11,21 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..base import BaseTool, ToolResult
+
+
+# 默认工作目录：项目根目录下的 workspace
+def _get_default_work_dir() -> Path:
+    """获取默认工作目录"""
+    # 获取项目根目录（向上查找到包含 pyproject.toml 的目录）
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent / "workspace"
+    # 如果找不到项目根目录，使用当前目录下的 workspace
+    return Path.cwd() / "workspace"
+
+
+DEFAULT_WORK_DIR = _get_default_work_dir()
 
 
 class FileReadTool(BaseTool):
@@ -26,12 +43,14 @@ class FileReadTool(BaseTool):
     def __init__(self, work_dir: Optional[str] = None):
         """
         初始化文件读取工具
-        
+
         Args:
-            work_dir: 工作目录（默认当前目录）
+            work_dir: 工作目录（默认为项目 workspace 目录）
         """
         super().__init__()
-        self.work_dir = Path(work_dir or os.getcwd()).resolve()
+        self.work_dir = Path(work_dir or DEFAULT_WORK_DIR).resolve()
+        # 确保工作目录存在
+        self.work_dir.mkdir(parents=True, exist_ok=True)
     
     @property
     def name(self) -> str:
@@ -173,15 +192,17 @@ class FileReadTool(BaseTool):
 class FileWriteTool(BaseTool):
     """
     文件写入工具
-    
+
     安全设计：
     - 限制在指定工作目录内
     - 不允许覆盖敏感文件
     """
-    
+
     def __init__(self, work_dir: Optional[str] = None):
         super().__init__()
-        self.work_dir = Path(work_dir or os.getcwd()).resolve()
+        self.work_dir = Path(work_dir or DEFAULT_WORK_DIR).resolve()
+        # 确保工作目录存在
+        self.work_dir.mkdir(parents=True, exist_ok=True)
     
     @property
     def name(self) -> str:
@@ -295,10 +316,12 @@ class FileWriteTool(BaseTool):
 
 class ListDirTool(BaseTool):
     """列出目录内容"""
-    
+
     def __init__(self, work_dir: Optional[str] = None):
         super().__init__()
-        self.work_dir = Path(work_dir or os.getcwd()).resolve()
+        self.work_dir = Path(work_dir or DEFAULT_WORK_DIR).resolve()
+        # 确保工作目录存在
+        self.work_dir.mkdir(parents=True, exist_ok=True)
     
     @property
     def name(self) -> str:
