@@ -317,7 +317,7 @@ class OpenAICompatibleLLM(BaseLLM):
 MODEL_CONFIGS = {
     "qwen": {
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "default_model": "qwen3.5-flash",
+        "default_model": "MiniMax-M2.1",
     },
     "glm": {
         "base_url": "https://open.bigmodel.cn/api/paas/v4",

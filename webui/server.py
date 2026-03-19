@@ -184,7 +184,7 @@ async def get_providers():
     """获取支持的 LLM 提供者"""
     return {
         "providers": [
-            {"id": "qwen", "name": "通义千问", "needs_key": True, "default_model": "qwen-plus"},
+            {"id": "qwen", "name": "通义千问", "needs_key": True, "default_model": "MiniMax-M2.1"},
             {"id": "glm", "name": "智谱 GLM", "needs_key": True, "default_model": "glm-4-flash"},
             {"id": "deepseek", "name": "DeepSeek", "needs_key": True, "default_model": "deepseek-chat"},
             {"id": "ollama", "name": "Ollama (本地)", "needs_key": False, "default_model": "qwen3.5:4b"},

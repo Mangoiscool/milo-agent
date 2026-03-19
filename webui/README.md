@@ -83,7 +83,7 @@ python -m cli webui --reload
 {
   "provider": "qwen",
   "api_key": "sk-xxx",
-  "model": "qwen-plus"
+  "model": "MiniMax-M2.1"
 }
 ```
 

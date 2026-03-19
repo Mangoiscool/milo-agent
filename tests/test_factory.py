@@ -19,7 +19,7 @@ class TestCreateLLM:
         """测试创建 Qwen LLM"""
         llm = create_llm("qwen", api_key="test-key")
         assert isinstance(llm, OpenAICompatibleLLM)
-        assert llm.model == "qwen-plus"
+        assert llm.model == "MiniMax-M2.1"
         assert llm.api_key == "test-key"
 
     def test_create_qwen_custom_model(self):

@@ -265,7 +265,8 @@ class BrowserController:
 
             if press_enter:
                 await self._page.press(selector, "Enter")
-                await asyncio.sleep(0.5)
+                # 等待搜索结果加载（动态页面需要更长时间）
+                await asyncio.sleep(2.0)
 
             page_state = await self.get_page_state()
 
@@ -536,6 +537,9 @@ class BrowserController:
         await self._lazy_initialize()
 
         try:
+            # 等待页面内容加载（对于动态加载的页面很重要）
+            await asyncio.sleep(1.0)
+
             if selector:
                 text = await self._page.text_content(selector) or ""
             else:

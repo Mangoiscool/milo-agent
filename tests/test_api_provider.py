@@ -188,7 +188,7 @@ class TestModelConfigs:
         """测试 Qwen 配置"""
         config = MODEL_CONFIGS["qwen"]
         assert "dashscope.aliyuncs.com" in config["base_url"]
-        assert config["default_model"] == "qwen-plus"
+        assert config["default_model"] == "MiniMax-M2.1"
 
     def test_glm_config(self):
         """测试 GLM 配置"""

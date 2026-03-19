@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # Qwen 配置
     qwen_api_key: Optional[str] = None
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    qwen_model: str = "qwen-plus"
+    qwen_model: str = "MiniMax-M2.1"
 
     # GLM 配置
     glm_api_key: Optional[str] = None

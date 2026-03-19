@@ -234,7 +234,15 @@ class BrowserGetTextTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "获取页面或元素的文本内容"
+        return """获取当前浏览器已打开页面的文本内容。
+
+这是读取当前浏览器页面内容的主要方式：
+- 当用户询问当前页面的内容、搜索结果、页面信息时，应该使用此工具
+- 获取页面文本后，应该直接基于文本内容回答用户问题
+- 不需要在获取文本后再调用 web_search 等其他搜索工具
+
+参数：
+- selector: CSS 选择器，为空则获取整个页面的文本"""
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -258,7 +266,18 @@ class BrowserGetTextTool(BaseTool):
 
     async def aexecute(self, selector: Optional[str] = None) -> ToolResult:
         result = await self.controller.get_text(selector)
-        return self._to_tool_result(result)
+        if result.success:
+            # 返回实际的文本内容，而不是简单的成功消息
+            text_content = result.data or ""
+            return ToolResult(
+                content=f"页面文本内容：\n\n{text_content}" if text_content else "页面没有文本内容"
+            )
+        else:
+            return ToolResult(
+                content="",
+                is_error=True,
+                error_message=result.message
+            )
 
 
 class BrowserScreenshotTool(BaseTool):
