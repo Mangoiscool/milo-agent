@@ -1,8 +1,12 @@
 """MainAgent Phase 4 演示
 
 展示 ReAct 和长期记忆功能
+
+运行前请设置环境变量：
+    export QWEN_API_KEY="your-api-key"
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -14,6 +18,12 @@ from core.rag.embeddings import create_embedding
 from agents.main import MainAgent
 
 
+# 默认使用 qwen
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "qwen")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen-plus")
+QWEN_API_KEY = os.getenv("QWEN_API_KEY")
+
+
 def demo_react():
     """演示 ReAct 推理模式"""
     print("=" * 60)
@@ -21,7 +31,18 @@ def demo_react():
     print("=" * 60)
 
     # 创建 LLM
-    llm = create_llm("ollama", model="qwen3.5:4b", think=False)
+    try:
+        if LLM_PROVIDER == "qwen":
+            if not QWEN_API_KEY:
+                print("⚠️ 请先设置 QWEN_API_KEY 环境变量")
+                return
+            llm = create_llm(LLM_PROVIDER, model=LLM_MODEL, api_key=QWEN_API_KEY, think=False)
+        else:
+            llm = create_llm(LLM_PROVIDER, model=LLM_MODEL, think=False)
+        print(f"✓ 使用 LLM: {LLM_PROVIDER}/{LLM_MODEL}")
+    except Exception as e:
+        print(f"✗ 创建 LLM 失败: {e}")
+        return
 
     # 创建启用 ReAct 的 Agent
     agent = MainAgent(
@@ -60,11 +81,28 @@ def demo_long_term_memory():
     print("演示 2: 长期记忆")
     print("=" * 60)
 
-    # 创建 Embedding
-    embedding = create_embedding("ollama")
+    # 创建 Embedding（使用 Ollama 本地模型）
+    try:
+        embedding = create_embedding("ollama", model="qwen3-embedding:0.6b")
+        print("✓ Embedding 模型已加载")
+    except Exception as e:
+        print(f"⚠️ Embedding 初始化失败: {e}")
+        print("  请确保 Ollama 服务正在运行")
+        return
 
     # 创建 LLM
-    llm = create_llm("ollama", model="qwen3.5:4b", think=False)
+    try:
+        if LLM_PROVIDER == "qwen":
+            if not QWEN_API_KEY:
+                print("⚠️ 请先设置 QWEN_API_KEY 环境变量")
+                return
+            llm = create_llm(LLM_PROVIDER, model=LLM_MODEL, api_key=QWEN_API_KEY, think=False)
+        else:
+            llm = create_llm(LLM_PROVIDER, model=LLM_MODEL, think=False)
+        print(f"✓ 使用 LLM: {LLM_PROVIDER}/{LLM_MODEL}")
+    except Exception as e:
+        print(f"✗ 创建 LLM 失败: {e}")
+        return
 
     # 创建启用长期记忆的 Agent
     print("\n--- 会话 1: 记住用户信息 ---")

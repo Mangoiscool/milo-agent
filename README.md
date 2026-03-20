@@ -20,8 +20,7 @@ milo-agent/
 │   ├── __init__.py
 │   └── main.py               # CLI 主入口
 ├── config/                    # 配置管理
-│   ├── settings.yaml         # YAML 配置文件
-│   └── settings.py          # 统一配置管理
+│   └── settings.py          # 统一配置管理（Pydantic Settings）
 ├── core/                      # 核心基础设施
 │   ├── __init__.py
 │   ├── logger.py             # 日志模块

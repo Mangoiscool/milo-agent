@@ -6,30 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-try:
-    from pydantic_settings import BaseSettings, SettingsConfigDict
-except ImportError:
-    # 如果没有安装 pydantic-settings，提供简化版本
-    import os
-    from pydantic import BaseModel
-
-    class SettingsConfigDict:
-        """简化版 SettingsConfigDict"""
-        pass
-
-    class BaseSettings(BaseModel):
-        """简化版 BaseSettings"""
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            # 从环境变量加载
-            for key in self.model_fields:
-                env_value = os.environ.get(key.upper())
-                if env_value is not None:
-                    field_type = self.model_fields[key].annotation
-                    # 简单的类型转换
-                    if field_type == bool:
-                        env_value = env_value.lower() in ('true', '1', 'yes')
-                    setattr(self, key, env_value)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -117,15 +94,11 @@ class Settings(BaseSettings):
     tavily_api_key: Optional[str] = None
 
     # SettingsConfigDict 配置
-    try:
-        model_config = SettingsConfigDict(
-            env_file=".env",
-            env_file_encoding="utf-8",
-            extra="ignore",
-        )
-    except (NameError, TypeError):
-        # 简化版本或旧版本 pydantic-settings 不需要这个
-        pass
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 @lru_cache
