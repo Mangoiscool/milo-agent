@@ -8,6 +8,7 @@
 """
 
 import asyncio
+import platform
 from pathlib import Path
 from typing import Optional, Union
 
@@ -19,6 +20,42 @@ from .base import (
     PageState,
     ScrollDirection,
 )
+
+
+def _get_default_chrome_path() -> Optional[str]:
+    """
+    获取系统默认的 Chrome 安装路径
+
+    Returns:
+        Chrome 可执行文件路径，如果未找到则返回 None
+    """
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        paths = [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            str(Path.home() / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+        ]
+    elif system == "Windows":
+        paths = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            str(Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe"),
+        ]
+    else:  # Linux
+        paths = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/snap/bin/chromium",
+        ]
+
+    for path in paths:
+        if Path(path).exists():
+            return path
+
+    return None
 
 
 class BrowserController:
@@ -54,10 +91,19 @@ class BrowserController:
 
             # 选择浏览器类型
             browser_launcher = getattr(self._playwright, self.config.browser_type)
-            self._browser = await browser_launcher.launch(
-                headless=self.config.headless,
-                slow_mo=self.config.slow_mo
-            )
+
+            # 构建启动参数
+            launch_args = {
+                "headless": self.config.headless,
+                "slow_mo": self.config.slow_mo
+            }
+
+            # 如果指定了 executable_path 或可以检测到系统 Chrome，则使用它
+            executable_path = self.config.executable_path or _get_default_chrome_path()
+            if executable_path:
+                launch_args["executable_path"] = executable_path
+
+            self._browser = await browser_launcher.launch(**launch_args)
 
             # 创建上下文
             self._context = await self._browser.new_context(

@@ -137,3 +137,4 @@ class BrowserConfig:
     timeout: int = 30000                      # 默认超时（毫秒）
     slow_mo: int = 0                          # 操作延迟（毫秒）
     screenshot_on_error: bool = True          # 错误时截图
+    executable_path: Optional[str] = None     # 浏览器可执行文件路径（使用普通Chrome而非Chrome for Testing）
