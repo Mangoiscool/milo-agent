@@ -1,9 +1,11 @@
 """RAG 基础类型定义"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional, Union
 
 
 class DocumentType(Enum):
@@ -22,13 +24,13 @@ class DocumentType(Enum):
 class Document:
     """文档对象"""
     content: str  # 文档内容
-    metadata: dict[str, Any] = field(default_factory=dict)  # 元数据
+    metadata: Dict[str, Any] = field(default_factory=dict)  # 元数据
 
     # 元数据字段（可选）
     source: str = ""  # 来源文件路径
     doc_type: DocumentType = DocumentType.UNKNOWN
-    page: int | None = None  # 页码（PDF）
-    chunk_index: int | None = None  # 切片索引
+    page: Optional[int] = None  # 页码（PDF）
+    chunk_index: Optional[int] = None  # 切片索引
 
     def __post_init__(self):
         """自动填充元数据"""
@@ -62,9 +64,9 @@ class Document:
 class Chunk:
     """文本切片"""
     text: str
-    metadata: dict[str, Any] = field(default_factory=dict)
-    embedding: list[float] | None = None
-    id: str | None = None  # 向量存储中的 ID
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    embedding: Optional[List[float]] = None
+    id: Optional[str] = None  # 向量存储中的 ID
 
     @classmethod
     def from_document(
@@ -89,11 +91,11 @@ class SearchResult:
         return self.chunk.text
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> Dict[str, Any]:
         return self.chunk.metadata
 
 
-def detect_document_type(file_path: Path | str) -> DocumentType:
+def detect_document_type(file_path: Union[Path, str]) -> DocumentType:
     """根据文件扩展名检测文档类型"""
     path = Path(file_path)
     suffix = path.suffix.lower()

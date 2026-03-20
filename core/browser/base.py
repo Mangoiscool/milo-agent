@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Browser 模块基础类型"""
 
 from dataclasses import dataclass, field

@@ -38,7 +38,9 @@ milo-agent/
 │   │   ├── base.py           # 记忆系统抽象基类
 │   │   ├── short_term.py     # 短期记忆（自动裁剪）
 │   │   ├── scoring.py        # 消息评分系统
-│   │   └── persistent.py     # 持久化存储（JSON 文件）
+│   │   ├── persistent.py     # 持久化存储（JSON 文件）
+│   │   ├── long_term.py      # 长期记忆（语义检索，Phase 4）
+│   │   └── hybrid.py         # 混合记忆（Phase 4）
 │   ├── tools/               # 工具调用
 │   │   ├── __init__.py
 │   │   ├── base.py           # 工具抽象基类
@@ -54,6 +56,9 @@ milo-agent/
 │   │   │   └── code_execution.py
 │   │   ├── mcp.py           # MCP 协议支持
 │   │   └── mcp_example.py   # MCP 使用示例
+│   ├── reasoning/           # 推理模块
+│   │   ├── __init__.py
+│   │   └── react.py         # ReAct 数据结构
 │   ├── rag/                 # RAG 模块
 │   │   ├── __init__.py
 │   │   ├── base.py           # RAG 基类
@@ -73,6 +78,7 @@ milo-agent/
 │   ├── base.py              # BaseAgent 基类
 │   ├── agent_config.py      # AgentConfig 配置类
 │   ├── simple.py            # SimpleAgent 实现
+│   ├── react.py             # ReActAgent - 推理与行动
 │   ├── main.py              # MainAgent - 统一主 Agent
 │   ├── rag.py               # RAG Agent
 │   └── browser.py           # Browser Agent
@@ -85,7 +91,10 @@ milo-agent/
 │   ├── 03_web_search_demo.py # 网络搜索
 │   ├── 04_rag_agent_demo.py # RAG Agent
 │   ├── 05_browser_agent_demo.py # Browser Agent
-│   └── 06_main_agent_demo.py # MainAgent 完整演示
+│   ├── 06_main_agent_demo.py # MainAgent 完整演示
+│   ├── 07_react_agent_demo.py # ReAct Agent 演示（Phase 4）
+│   ├── 08_long_term_memory_demo.py # 长期记忆演示（Phase 4）
+│   └── 09_main_agent_phase4_demo.py # MainAgent Phase 4 演示
 ├── webui/                    # Web 界面
 │   ├── server.py            # FastAPI Web 服务器
 │   ├── launch.py            # 启动脚本
@@ -137,10 +146,28 @@ milo-agent/
 - 浏览器工具（8个）：navigate, click, type, scroll, get_text, screenshot, wait, back
 - 截图保存到 workspace/browser_use/screenshots/
 
-### Phase 4 - 进阶（规划中）
-- 长期记忆（对话历史向量化、跨会话检索）
-- ReAct 框架
-- 反思机制
+### Phase 4 - 进阶
+
+#### Phase 4.1 - ReAct Agent ✅
+- ReAct 数据结构（ThoughtStep, ActionStep, ObservationStep, ReActTrace）
+- ReActAgent 实现（显式思考过程、工具调用、轨迹追踪）
+- 支持多步骤推理和 show_reasoning 参数
+- 完整的单元测试
+
+#### Phase 4.2 - 长期记忆 ✅
+- LongTermMemory（向量化存储、语义检索、跨会话记忆）
+- HybridMemory（短期记忆 + 长期记忆组合）
+- 重要性评分（自动识别关键信息）
+- 完整的演示和测试
+
+#### Phase 4.3 - MainAgent 集成 ✅
+- MainAgent 支持启用 ReAct（enable_react）
+- MainAgent 支持启用长期记忆（enable_long_term_memory）
+- ReAct 推理循环集成到 chat_with_tools
+- 长期记忆自动检索相关历史
+
+#### Phase 4.4 - 规划中
+- 反思机制（任务完成后自我评估）
 - 多 Agent 协作
 
 ## 快速开始
@@ -353,7 +380,11 @@ agent.on(AgentEvent.STREAM_CHUNK, lambda c: print(c, end="", flush=True))
   - [x] Phase 3.1 - RAG 基础设施
   - [x] Phase 3.2 - RAG Agent
   - [x] Phase 3.3 - Browser Agent
-- [ ] **Phase 4** - 进阶（长期记忆、ReAct、反思、多 Agent 协作）
+- [x] **Phase 4** - 进阶
+  - [x] Phase 4.1 - ReAct Agent
+  - [x] Phase 4.2 - 长期记忆
+  - [x] Phase 4.3 - MainAgent 集成
+  - [ ] Phase 4.2 - 长期记忆、反思机制、多 Agent 协作
 
 ## License
 

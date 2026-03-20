@@ -123,8 +123,9 @@ class Settings(BaseSettings):
             env_file_encoding="utf-8",
             extra="ignore",
         )
-    except NameError:
-        pass  # 简化版本不需要这个
+    except (NameError, TypeError):
+        # 简化版本或旧版本 pydantic-settings 不需要这个
+        pass
 
 
 @lru_cache

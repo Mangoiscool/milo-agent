@@ -13,6 +13,7 @@ BaseAgent (抽象基类)
 └── 工具调用循环
 
 ├── SimpleAgent - 基础对话 Agent
+├── ReActAgent - 推理与行动 Agent（显式思考过程）
 ├── MainAgent - 统一的 Main Agent（推荐）
 │   ├── 内置工具（默认启用）
 │   ├── RAG 能力（可选）
@@ -31,6 +32,7 @@ BaseAgent (抽象基类)
 | `04_rag_agent_demo.py` | RAG Agent - 知识库问答 |
 | `05_browser_agent_demo.py` | Browser Agent - 网页自动化 |
 | `06_main_agent_demo.py` | **MainAgent - 统一的 Agent（推荐）** |
+| `07_react_agent_demo.py` | ReAct Agent - 推理与行动（显式思考过程）|
 
 ## 🚀 快速开始
 
@@ -55,6 +57,9 @@ python examples/05_browser_agent_demo.py
 
 # 6. MainAgent 演示（统一的 Agent）
 python examples/06_main_agent_demo.py
+
+# 7. ReAct Agent 演示（推理与行动）
+python examples/07_react_agent_demo.py
 ```
 
 ## 💡 运行说明
@@ -111,3 +116,36 @@ response = agent.chat_with_tools("帮我查一下公司的请假流程")
 | | browser_click | 点击 |
 | | browser_type | 输入 |
 | | browser_screenshot | 截图 |
+
+## 🧠 ReAct Agent
+
+ReAct Agent 提供显式的思考过程（Reasoning + Acting）：
+
+```python
+from agents import ReActAgent
+from core.llm.factory import create_llm
+
+llm = create_llm("qwen", api_key="...")
+agent = ReActAgent(llm=llm, tools=[CalculatorTool(), WeatherTool()])
+
+# 显示思考过程
+response = agent.chat("北京今天气温是多少？明天降温5度后呢？", show_reasoning=True)
+
+# 输出示例：
+# Thought: 用户询问北京气温和计算...
+# Action: weather(city="北京")
+# Observation: 晴天，25°C
+# Thought: 今天25度，明天降温5度...
+# Action: calculator(expression="25 - 5")
+# Observation: 20
+# Final Answer: 北京今天25°C，明天降温5度后是20°C
+```
+
+### ReAct vs ToolAgent
+
+| 特性 | ToolAgent | ReActAgent |
+|------|-----------|------------|
+| 工具调用 | ✅ 直接调用 | ✅ 显式思考后调用 |
+| 思考过程 | ❌ 隐藏 | ✅ 可追踪 |
+| 多步骤推理 | ✅ 自动 | ✅ 显式步骤 |
+| 调试友好 | ⚠️ 一般 | ✅ 非常友好 |

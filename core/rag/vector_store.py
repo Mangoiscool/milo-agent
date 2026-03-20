@@ -1,3 +1,4 @@
+from __future__ import annotations
 """向量存储
 
 使用 ChromaDB 作为向量数据库，支持：

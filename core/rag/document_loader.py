@@ -1,3 +1,4 @@
+from __future__ import annotations
 """文档加载器
 
 支持多种文档格式的加载和解析：

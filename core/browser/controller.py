@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Browser Controller - Playwright 封装
 
 提供浏览器自动化能力：

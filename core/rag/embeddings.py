@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Embedding 抽象层
 
 支持多种 Embedding 提供者：

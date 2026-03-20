@@ -1,3 +1,4 @@
+from __future__ import annotations
 """文本切分器"""
 
 import re

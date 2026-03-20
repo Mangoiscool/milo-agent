@@ -1,3 +1,4 @@
+from __future__ import annotations
 """检索器
 
 提供多种检索策略：
