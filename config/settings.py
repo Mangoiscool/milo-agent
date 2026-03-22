@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # ====================
     # 存储配置
     # ====================
+    # Workspace 目录（用于项目数据存储，默认：项目根目录/workspace）
+    workspace_dir: Optional[Path] = None
+    # 存储目录（默认：~/.milo-agent）
     storage_dir: Path = Path.home() / ".milo-agent"
     memory_file: Path = storage_dir / "memory.json"
 

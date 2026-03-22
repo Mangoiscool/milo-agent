@@ -15,6 +15,7 @@ from core.llm.base import Message, Role
 from core.memory.base import BaseMemory
 from core.rag.embeddings import BaseEmbedding
 from core.rag.vector_store import VectorStore
+from config.settings import settings
 
 
 def _get_project_root() -> Path:
@@ -26,8 +27,33 @@ def _get_project_root() -> Path:
     return Path.cwd()
 
 
-PROJECT_ROOT = _get_project_root()
-DEFAULT_MEMORY_DIR = PROJECT_ROOT / "workspace" / "long_term_memory"
+def _resolve_workspace_dir() -> Path:
+    """
+    解析 workspace 目录
+
+    - 如果设置了 workspace_dir，使用它
+    - 如果是相对路径，基于项目根目录解析
+    - 如果没设置，使用默认值 ~/.milo-agent/workspace
+    """
+    s = settings()
+    project_root = _get_project_root()
+
+    if s.workspace_dir:
+        # 如果设置的是相对路径，基于项目根目录
+        if not s.workspace_dir.is_absolute():
+            return project_root / s.workspace_dir
+        return s.workspace_dir
+
+    # 默认路径
+    return Path.home() / ".milo-agent" / "workspace"
+
+
+def _get_default_memory_dir() -> Path:
+    """获取默认长期记忆存储目录（向量存储）"""
+    return _resolve_workspace_dir() / "memory_storage" / "vector_store"
+
+
+DEFAULT_MEMORY_DIR = _get_default_memory_dir()
 
 
 @dataclass
