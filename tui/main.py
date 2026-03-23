@@ -6,19 +6,24 @@ Modern chat interface inspired by Claude Code.
 Usage:
     python -m tui.main
     python -m tui.main --rag --react
+    python -m tui.main --theme light
 
 Shortcuts:
-    Ctrl+C  - Quit
-    Ctrl+L  - Clear chat
-    Ctrl+T  - Toggle thinking mode
-    Ctrl+R  - Toggle RAG
-    Ctrl+B  - Toggle browser
+    Enter      - Send message
+    Ctrl+Q     - Quit
+    Ctrl+L     - Clear chat
+    Ctrl+N     - New chat
+    Ctrl+S     - Toggle sidebar
+    Ctrl+T     - Toggle thinking mode
+    Ctrl+R     - Toggle RAG
+    Ctrl+B     - Toggle browser
+    Ctrl+,     - Settings
 
 Commands:
-    /help    - Show help
-    /clear   - Clear chat
-    /model   - Change model
-    /quit    - Exit
+    /help      - Show help
+    /clear     - Clear chat
+    /model     - Change model
+    /quit      - Exit
 """
 
 import argparse
@@ -29,14 +34,12 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from tui.app import run_tui, MiloTUIApp
-from agents.milo_agent import MiloAgent
-from core.llm.factory import create_llm
-from core.rag.embeddings import create_embedding
+from tui.app import run_tui, MiloApp
+from tui.config import config
 
 
 def parse_args():
-    """Parse command line arguments"""
+    """解析命令行参数"""
     parser = argparse.ArgumentParser(
         description="Milo Agent TUI - Terminal chat interface",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -46,6 +49,7 @@ Examples:
   python -m tui.main --rag --react      # Enable RAG and thinking
   python -m tui.main --browser          # Enable browser
   python -m tui.main --provider qwen    # Use Qwen provider
+  python -m tui.main --theme light      # Use light theme
         """
     )
 
@@ -84,17 +88,33 @@ Examples:
         dest="react",
         help="Enable thinking mode (ReAct)"
     )
+    parser.add_argument(
+        "--theme",
+        type=str,
+        default=None,
+        choices=["claude", "light"],
+        help="UI theme"
+    )
+    parser.add_argument(
+        "--no-welcome",
+        action="store_true",
+        help="Skip welcome screen"
+    )
 
     return parser.parse_args()
 
 
-def build_agent(args) -> MiloAgent:
-    """Build the agent"""
+def build_agent(args):
+    """构建 Agent"""
+    from agents.milo_agent import MiloAgent
+    from core.llm.factory import create_llm
+    from core.rag.embeddings import create_embedding
+
     print(f"Initializing Agent...")
     print(f"  Provider: {args.provider}")
     print(f"  Model: {args.model or 'default'}")
 
-    # Create LLM
+    # 创建 LLM
     kwargs = {}
     if args.model:
         kwargs["model"] = args.model
@@ -103,7 +123,7 @@ def build_agent(args) -> MiloAgent:
 
     llm = create_llm(args.provider, **kwargs)
 
-    # Create embedding if needed
+    # 创建 embedding（如果需要）
     embedding = None
     if args.rag:
         try:
@@ -112,7 +132,7 @@ def build_agent(args) -> MiloAgent:
         except Exception as e:
             print(f"  Warning: Embedding failed: {e}")
 
-    # Create agent
+    # 创建 Agent
     agent = MiloAgent(
         llm=llm,
         enable_builtin_tools=True,
@@ -127,10 +147,10 @@ def build_agent(args) -> MiloAgent:
 
 
 def main():
-    """Main entry point"""
+    """主入口"""
     args = parse_args()
 
-    # Check textual is installed
+    # 检查 textual 是否安装
     try:
         import textual
     except ImportError:
@@ -138,19 +158,33 @@ def main():
         print("Run: pip install textual")
         return 1
 
-    # Build agent
-    try:
-        agent = build_agent(args)
-    except Exception as e:
-        print(f"Agent init failed: {e}")
-        return 1
+    # 保存配置
+    if args.theme:
+        config.set("theme", args.theme)
+    if args.rag:
+        config.set("default_rag", True)
+    if args.browser:
+        config.set("default_browser", True)
+    if args.react:
+        config.set("default_react", True)
 
-    # Run TUI
+    # 构建 Agent（如果参数指定）
+    agent = None
+    if args.provider != "ollama" or args.rag or args.browser or args.react:
+        try:
+            agent = build_agent(args)
+        except Exception as e:
+            print(f"Agent init failed: {e}")
+            return 1
+
+    # 运行 TUI
     print("\nStarting TUI...")
-    print("Press Ctrl+C to exit\n")
+    print("Press Ctrl+Q to exit\n")
 
     try:
-        app = MiloTUIApp(agent=agent)
+        app = MiloApp(agent=agent)
+        if args.no_welcome:
+            app.push_screen(None)  # 跳过欢迎界面
         app.run()
     except KeyboardInterrupt:
         print("\nGoodbye!")
