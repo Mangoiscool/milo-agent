@@ -60,8 +60,7 @@ class ChatArea(Static):
 
     def compose(self):
         """组合界面"""
-        with VerticalScroll():
-            pass  # 消息动态添加
+        yield VerticalScroll()
 
     def on_mount(self):
         """挂载后"""
