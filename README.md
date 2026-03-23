@@ -78,7 +78,7 @@ milo-agent/
 │   ├── agent_config.py      # AgentConfig 配置类
 │   ├── simple.py            # SimpleAgent 实现
 │   ├── react.py             # ReActAgent - 推理与行动
-│   ├── main.py              # MainAgent - 统一主 Agent
+│   ├── main.py              # MiloAgent - 统一主 Agent
 │   ├── rag.py               # RAG Agent
 │   └── browser.py           # Browser Agent
 ├── workspace/                # 工作目录
@@ -90,10 +90,10 @@ milo-agent/
 │   ├── 03_web_search_demo.py # 网络搜索
 │   ├── 04_rag_agent_demo.py # RAG Agent
 │   ├── 05_browser_agent_demo.py # Browser Agent
-│   ├── 06_main_agent_demo.py # MainAgent 完整演示
+│   ├── 06_main_agent_demo.py # MiloAgent 完整演示
 │   ├── 07_react_agent_demo.py # ReAct Agent 演示（Phase 4）
 │   ├── 08_long_term_memory_demo.py # 长期记忆演示（Phase 4）
-│   └── 09_main_agent_phase4_demo.py # MainAgent Phase 4 演示
+│   └── 09_main_agent_phase4_demo.py # MiloAgent Phase 4 演示
 ├── webui/                    # Web 界面
 │   ├── server.py            # FastAPI Web 服务器
 │   ├── launch.py            # 启动脚本
@@ -115,7 +115,7 @@ milo-agent/
 - 事件系统：扩展性基础
 - 流式回退：自动降级机制
 - AgentConfig：统一配置类
-- PersistentMemory：持久化存储
+- ShortTermMemory：支持持久化的短期记忆
 - 消息评分系统：智能裁剪
 
 ### Phase 2 - 工具调用
@@ -159,9 +159,9 @@ milo-agent/
 - 重要性评分（自动识别关键信息）
 - 完整的演示和测试
 
-#### Phase 4.3 - MainAgent 集成 ✅
-- MainAgent 支持启用 ReAct（enable_react）
-- MainAgent 支持启用长期记忆（enable_long_term_memory）
+#### Phase 4.3 - MiloAgent 集成 ✅
+- MiloAgent 支持启用 ReAct（enable_react）
+- MiloAgent 支持启用长期记忆（enable_long_term_memory）
 - ReAct 推理循环集成到 chat_with_tools
 - 长期记忆自动检索相关历史
 
@@ -252,7 +252,7 @@ python examples/04_rag_agent_demo.py
 # Browser Agent
 python examples/05_browser_agent_demo.py
 
-# MainAgent 完整演示
+# MiloAgent 完整演示
 python examples/06_main_agent_demo.py
 ```
 
@@ -264,24 +264,24 @@ pytest tests/ -v
 
 ## 核心概念
 
-### MainAgent - 统一入口
+### MiloAgent - 统一入口
 
-`MainAgent` 整合了所有能力，是最推荐的使用方式：
+`MiloAgent` 整合了所有能力，是最推荐的使用方式：
 
 ```python
 from core.llm.factory import create_llm
 from core.rag.embeddings import create_embedding
-from agents.main import MainAgent
+from agents.main import MiloAgent
 
 llm = create_llm("qwen", api_key="...")
 embedding = create_embedding("ollama", model="nomic-embed-text")
 
 # 基础使用（仅内置工具）
-agent = MainAgent(llm)
+agent = MiloAgent(llm)
 response = agent.chat_with_tools("今天天气怎么样？")
 
 # 启用 RAG
-agent = MainAgent(
+agent = MiloAgent(
     llm=llm,
     enable_rag=True,
     embedding_model=embedding
@@ -290,13 +290,13 @@ agent.add_document("guide.pdf")
 response = agent.chat_with_tools("文档里有什么？")
 
 # 启用 Browser
-agent = MainAgent(llm, enable_browser=True)
+agent = MiloAgent(llm, enable_browser=True)
 await agent.initialize()
 response = agent.chat_with_tools("打开百度搜索 Python")
 await agent.close()
 
 # 完整功能
-async with MainAgent(
+async with MiloAgent(
     llm=llm,
     enable_rag=True,
     embedding_model=embedding,
@@ -306,7 +306,7 @@ async with MainAgent(
     response = agent.chat_with_tools("帮我查一下...")
 ```
 
-### MainAgent 工具分类
+### MiloAgent 工具分类
 
 | 类别 | 工具 | 说明 |
 |------|------|------|
@@ -317,7 +317,7 @@ async with MainAgent(
 ### 知识库管理 API
 
 ```python
-agent = MainAgent(llm, enable_rag=True, embedding_model=embedding)
+agent = MiloAgent(llm, enable_rag=True, embedding_model=embedding)
 
 # 添加文档
 agent.add_document("guide.pdf")
@@ -346,18 +346,18 @@ llm = create_llm("ollama", model="qwen3.5:4b", think=False)
 
 ```python
 from core.memory.short_term import ShortTermMemory
-from core.memory.persistent import PersistentMemory
 
-# 短期记忆
+# 纯内存模式
 memory = ShortTermMemory(max_messages=50, use_intelligent_pruning=True)
 
-# 持久化存储
-memory = PersistentMemory(
+# 启用持久化
+memory = ShortTermMemory(
     max_messages=100,
-    storage_path="./chat.json"
+    persist=True,
+    session_id="my-session"  # 可选，默认自动生成
 )
-memory.save()
-memory.load()
+memory.save()  # 手动保存
+memory.load()  # 加载会话
 ```
 
 ### 事件系统
@@ -382,7 +382,7 @@ agent.on(AgentEvent.STREAM_CHUNK, lambda c: print(c, end="", flush=True))
 - [x] **Phase 4** - 进阶
   - [x] Phase 4.1 - ReAct Agent
   - [x] Phase 4.2 - 长期记忆
-  - [x] Phase 4.3 - MainAgent 集成
+  - [x] Phase 4.3 - MiloAgent 集成
   - [ ] Phase 4.2 - 长期记忆、反思机制、多 Agent 协作
 
 ## License

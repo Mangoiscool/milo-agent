@@ -1,7 +1,7 @@
 """
-MainAgent 演示
+MiloAgent 演示
 
-展示 MainAgent 如何统一使用内置工具、RAG 和 Browser 能力。
+展示 MiloAgent 如何统一使用内置工具、RAG 和 Browser 能力。
 
 运行前请设置环境变量：
     export QWEN_API_KEY="your-api-key"
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from core.llm.factory import create_llm
 from core.rag import create_embedding
-from agents import MainAgent
+from agents import MiloAgent
 
 
 def get_llm():
@@ -47,8 +47,8 @@ def demo_builtin_tools():
     if not llm:
         return
 
-    # 创建 MainAgent（默认启用内置工具）
-    agent = MainAgent(llm=llm)
+    # 创建 MiloAgent（默认启用内置工具）
+    agent = MiloAgent(llm=llm)
 
     print(f"\n已注册工具: {agent.list_tools()}")
     print(f"\n工具分类: {agent.get_tool_info()}")
@@ -82,8 +82,8 @@ def demo_rag_capability():
         print("   ollama pull qwen3-embedding:0.6b")
         return
 
-    # 创建 MainAgent（启用 RAG）
-    agent = MainAgent(
+    # 创建 MiloAgent（启用 RAG）
+    agent = MiloAgent(
         llm=llm,
         enable_rag=True,
         embedding_model=embedding,
@@ -125,8 +125,8 @@ async def demo_browser_capability():
     if not llm:
         return
 
-    # 创建 MainAgent（启用 Browser）
-    agent = MainAgent(llm=llm, enable_browser=True)
+    # 创建 MiloAgent（启用 Browser）
+    agent = MiloAgent(llm=llm, enable_browser=True)
 
     print(f"\n已注册工具: {agent.list_tools()}")
 
@@ -171,8 +171,8 @@ async def demo_full_featured():
         print(f"⚠️  无法创建 Embedding: {e}")
         return
 
-    # 创建 MainAgent（启用所有能力）
-    agent = MainAgent(
+    # 创建 MiloAgent（启用所有能力）
+    agent = MiloAgent(
         llm=llm,
         enable_builtin_tools=True,
         enable_rag=True,
@@ -225,8 +225,8 @@ def demo_event_system():
     if not llm:
         return
 
-    # 创建 MainAgent
-    agent = MainAgent(llm=llm)
+    # 创建 MiloAgent
+    agent = MiloAgent(llm=llm)
 
     # 注册事件处理器
     def on_tool_call(name, arguments):
@@ -252,10 +252,10 @@ def demo_event_system():
 def main():
     """主函数"""
     print("=" * 60)
-    print("MainAgent 演示")
+    print("MiloAgent 演示")
     print("=" * 60)
     print("""
-MainAgent 是统一的 Agent 实现，可以组合多种能力：
+MiloAgent 是统一的 Agent 实现，可以组合多种能力：
 
 1. 内置工具（默认启用）: calculator, datetime, web_search 等
 2. RAG 能力（可选）: knowledge_search, knowledge_add 等

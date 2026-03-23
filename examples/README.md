@@ -14,7 +14,7 @@ BaseAgent (抽象基类)
 
 ├── SimpleAgent - 基础对话 Agent
 ├── ReActAgent - 推理与行动 Agent（显式思考过程）
-├── MainAgent - 统一的 Main Agent（推荐）
+├── MiloAgent - 统一的 Main Agent（推荐）
 │   ├── 内置工具（默认启用）
 │   ├── RAG 能力（可选）
 │   └── Browser 能力（可选）
@@ -31,7 +31,7 @@ BaseAgent (抽象基类)
 | `03_web_search_demo.py` | 网络搜索 - DuckDuckGo 搜索工具 |
 | `04_rag_agent_demo.py` | RAG Agent - 知识库问答 |
 | `05_browser_agent_demo.py` | Browser Agent - 网页自动化 |
-| `06_main_agent_demo.py` | **MainAgent - 统一的 Agent（推荐）** |
+| `06_main_agent_demo.py` | **MiloAgent - 统一的 Agent（推荐）** |
 | `07_react_agent_demo.py` | ReAct Agent - 推理与行动（显式思考过程）|
 
 ## 🚀 快速开始
@@ -55,7 +55,7 @@ python examples/04_rag_agent_demo.py
 pip install playwright && playwright install chromium
 python examples/05_browser_agent_demo.py
 
-# 6. MainAgent 演示（统一的 Agent）
+# 6. MiloAgent 演示（统一的 Agent）
 python examples/06_main_agent_demo.py
 
 # 7. ReAct Agent 演示（推理与行动）
@@ -72,12 +72,12 @@ python examples/07_react_agent_demo.py
    export GLM_API_KEY="your-api-key"
    ```
 
-## 🎯 推荐使用 MainAgent
+## 🎯 推荐使用 MiloAgent
 
-MainAgent 是统一的 Agent 实现，可以组合多种能力：
+MiloAgent 是统一的 Agent 实现，可以组合多种能力：
 
 ```python
-from agents import MainAgent
+from agents import MiloAgent
 from core.llm.factory import create_llm
 from core.rag import create_embedding
 
@@ -85,7 +85,7 @@ llm = create_llm("qwen", api_key="...")
 embedding = create_embedding("ollama", model="nomic-embed-text")
 
 # 创建具备所有能力的 Agent
-agent = MainAgent(
+agent = MiloAgent(
     llm=llm,
     enable_rag=True,           # 启用知识库
     embedding_model=embedding,
@@ -99,7 +99,7 @@ agent.add_document("company_guide.pdf")
 response = agent.chat_with_tools("帮我查一下公司的请假流程")
 ```
 
-### MainAgent 可用工具
+### MiloAgent 可用工具
 
 | 类别 | 工具 | 说明 |
 |------|------|------|

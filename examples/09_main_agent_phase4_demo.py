@@ -1,4 +1,4 @@
-"""MainAgent Phase 4 演示
+"""MiloAgent Phase 4 演示
 
 展示 ReAct 和长期记忆功能
 
@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.llm.factory import create_llm
 from core.rag.embeddings import create_embedding
-from agents.main import MainAgent
+from agents.milo_agent import MiloAgent
 
 
 # 默认使用 qwen
@@ -45,7 +45,7 @@ def demo_react():
         return
 
     # 创建启用 ReAct 的 Agent
-    agent = MainAgent(
+    agent = MiloAgent(
         llm=llm,
         enable_builtin_tools=True,
         enable_react=True,
@@ -106,7 +106,7 @@ def demo_long_term_memory():
 
     # 创建启用长期记忆的 Agent
     print("\n--- 会话 1: 记住用户信息 ---")
-    agent1 = MainAgent(
+    agent1 = MiloAgent(
         llm=llm,
         embedding_model=embedding,
         enable_long_term_memory=True,
@@ -128,7 +128,7 @@ def demo_long_term_memory():
 
     # 创建新会话（使用相同的长期记忆存储）
     print("\n--- 会话 2: 跨会话检索（新会话） ---")
-    agent2 = MainAgent(
+    agent2 = MiloAgent(
         llm=llm,
         embedding_model=embedding,
         enable_long_term_memory=True,
@@ -160,7 +160,7 @@ def demo_combined():
     llm = create_llm("ollama", model="qwen3.5:4b", think=False)
 
     # 创建同时启用 ReAct 和长期记忆的 Agent
-    agent = MainAgent(
+    agent = MiloAgent(
         llm=llm,
         embedding_model=embedding,
         enable_builtin_tools=True,
@@ -193,7 +193,7 @@ def main():
     """主函数"""
     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║           MainAgent Phase 4 功能演示                         ║
+║           MiloAgent Phase 4 功能演示                         ║
 ║                                                              ║
 ║  1. ReAct 推理模式 - 显式思考过程                             ║
 ║  2. 长期记忆 - 跨会话语义检索                                 ║

@@ -30,7 +30,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tui.app import run_tui, MiloTUIApp
-from agents.main import MainAgent
+from agents.milo_agent import MiloAgent
 from core.llm.factory import create_llm
 from core.rag.embeddings import create_embedding
 
@@ -88,7 +88,7 @@ Examples:
     return parser.parse_args()
 
 
-def build_agent(args) -> MainAgent:
+def build_agent(args) -> MiloAgent:
     """Build the agent"""
     print(f"Initializing Agent...")
     print(f"  Provider: {args.provider}")
@@ -113,7 +113,7 @@ def build_agent(args) -> MainAgent:
             print(f"  Warning: Embedding failed: {e}")
 
     # Create agent
-    agent = MainAgent(
+    agent = MiloAgent(
         llm=llm,
         enable_builtin_tools=True,
         enable_rag=args.rag and embedding is not None,

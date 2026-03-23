@@ -1,4 +1,4 @@
-"""MainAgent - 统一的主 Agent
+"""MiloAgent - 统一的主 Agent
 
 提供完整功能的 Agent：
 - 内置工具（默认启用）
@@ -10,13 +10,13 @@
 使用示例：
     from core.llm.factory import LLMFactory
     from core.rag import create_embedding
-    from agents.main import MainAgent
+    from agents.milo_agent import MiloAgent
 
     llm = LLMFactory.create("qwen", api_key="...")
     embedding = create_embedding("ollama", model="nomic-embed-text")
 
     # 创建具备所有能力的 Agent
-    agent = MainAgent(
+    agent = MiloAgent(
         llm=llm,
         enable_builtin_tools=True,
         enable_rag=True,
@@ -33,13 +33,13 @@
 Phase 4 示例（启用 ReAct 和长期记忆）：
     from core.llm.factory import create_llm
     from core.rag.embeddings import create_embedding
-    from agents.main import MainAgent
+    from agents.milo_agent import MiloAgent
 
     llm = create_llm("qwen", api_key="...")
     embedding = create_embedding("ollama")
 
     # 启用 ReAct 和长期记忆
-    agent = MainAgent(
+    agent = MiloAgent(
         llm=llm,
         enable_react=True,
         enable_long_term_memory=True,
@@ -105,7 +105,7 @@ from core.memory.hybrid import HybridMemory
 from core.memory.long_term import LongTermMemory
 
 
-class MainAgent(BaseAgent):
+class MiloAgent(BaseAgent):
     """
     统一的主 Agent
 
@@ -118,11 +118,11 @@ class MainAgent(BaseAgent):
 
     使用示例：
         # 最简单的用法
-        agent = MainAgent(llm)
+        agent = MiloAgent(llm)
         response = agent.chat_with_tools("今天天气怎么样？")
 
         # 启用 RAG
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_rag=True,
             embedding_model=embedding
@@ -131,13 +131,13 @@ class MainAgent(BaseAgent):
         response = agent.chat_with_tools("公司的请假流程是什么？")
 
         # 启用 Browser
-        agent = MainAgent(llm, enable_browser=True)
+        agent = MiloAgent(llm, enable_browser=True)
         await agent.initialize()
         response = agent.chat_with_tools("打开百度搜索 Python")
         await agent.close()
 
         # 完整功能
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_rag=True,
             embedding_model=embedding,
@@ -146,14 +146,14 @@ class MainAgent(BaseAgent):
 
     Phase 4 使用示例：
         # 启用 ReAct 推理（显示思考过程）
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_react=True
         )
         response = agent.chat_with_tools("北京今天气温多少？明天降温5度后呢？", show_reasoning=True)
 
         # 启用长期记忆（跨会话记忆）
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_long_term_memory=True,
             embedding_model=embedding
@@ -163,7 +163,7 @@ class MainAgent(BaseAgent):
         agent.chat_with_tools("还记得我是谁吗？")  # 能检索到之前的记忆
 
         # 同时启用 ReAct + 长期记忆
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_react=True,
             enable_long_term_memory=True,
@@ -218,7 +218,7 @@ Phase 4 能力（如果启用）：
         # ═══════════════════════════════════════════════════════════════
         embedding_model: Optional[BaseEmbedding] = None,
         persist_directory: Optional[str] = None,
-        knowledge_base_name: str = "main_agent_kb",
+        knowledge_base_name: str = "milo_agent_kb",
         retriever_type: str = "similarity",
         splitter_config: Optional[SplitConfig] = None,
         # ═══════════════════════════════════════════════════════════════
@@ -232,7 +232,7 @@ Phase 4 能力（如果启用）：
         memory_session_id: Optional[str] = None,
     ):
         """
-        初始化 MainAgent
+        初始化 MiloAgent
 
         Args:
             llm: LLM 实例
@@ -944,4 +944,4 @@ Final Answer: 北京今天晴天，气温25°C。"""
             capabilities.append("LongTermMemory")
 
         cap_str = f" capabilities=[{', '.join(capabilities)}]" if capabilities else ""
-        return f"<MainAgent llm={self.llm} tools={len(tools)}{cap_str}>"
+        return f"<MiloAgent llm={self.llm} tools={len(tools)}{cap_str}>"

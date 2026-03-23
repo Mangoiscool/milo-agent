@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from core.llm.factory import create_llm
 from core.llm.base import Message, Role
-from agents.main import MainAgent
+from agents.milo_agent import MiloAgent
 from core.rag import create_embedding
 from core.browser import BrowserConfig
 
@@ -85,7 +85,7 @@ class AgentManager:
     """管理 Agent 实例"""
 
     def __init__(self):
-        self.agents: Dict[str, MainAgent] = {}
+        self.agents: Dict[str, MiloAgent] = {}
 
     async def create_agent(
         self,
@@ -95,7 +95,7 @@ class AgentManager:
         model: Optional[str] = None,
         enable_rag: bool = False,
         enable_browser: bool = False
-    ) -> MainAgent:
+    ) -> MiloAgent:
         """为会话创建新 Agent"""
         # 创建 LLM
         if provider == "ollama":
@@ -115,13 +115,13 @@ class AgentManager:
                 print(f"[WARN] Failed to create embedding model: {e}, RAG disabled")
                 enable_rag = False
 
-        # 创建 MainAgent
+        # 创建 MiloAgent
         browser_config = None
         if enable_browser:
             # 非无头模式，用户可以看到浏览器窗口
             browser_config = BrowserConfig(headless=False)
 
-        agent = MainAgent(
+        agent = MiloAgent(
             llm=llm,
             enable_builtin_tools=True,
             enable_rag=enable_rag,
@@ -135,7 +135,7 @@ class AgentManager:
         self.agents[session_id] = agent
         return agent
 
-    def get_agent(self, session_id: str) -> Optional[MainAgent]:
+    def get_agent(self, session_id: str) -> Optional[MiloAgent]:
         """获取会话的 Agent"""
         return self.agents.get(session_id)
 

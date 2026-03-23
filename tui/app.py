@@ -12,7 +12,7 @@ from textual import work
 from rich.text import Text
 from rich.panel import Panel
 
-from agents.main import MainAgent
+from agents.milo_agent import MiloAgent
 from core.llm.factory import create_llm
 from core.rag.embeddings import create_embedding
 from tui.widgets import (
@@ -55,7 +55,7 @@ class MiloTUIApp(App):
     TITLE = "Milo Agent"
     SUB_TITLE = "Terminal UI"
 
-    def __init__(self, agent: Optional[MainAgent] = None, **kwargs):
+    def __init__(self, agent: Optional[MiloAgent] = None, **kwargs):
         super().__init__(**kwargs)
         self.agent = agent
         self.is_processing = False
@@ -122,7 +122,7 @@ class MiloTUIApp(App):
                 except Exception as e:
                     self.notify(f"Embedding init failed: {e}", severity="warning", timeout=3)
 
-            self.agent = MainAgent(
+            self.agent = MiloAgent(
                 llm=llm,
                 enable_builtin_tools=True,
                 enable_rag=self.enable_rag and embedding is not None,
@@ -335,7 +335,7 @@ class MiloTUIApp(App):
         self.init_agent()
 
 
-def run_tui(agent: Optional[MainAgent] = None):
+def run_tui(agent: Optional[MiloAgent] = None):
     """运行 TUI"""
     app = MiloTUIApp(agent=agent)
     app.run()
