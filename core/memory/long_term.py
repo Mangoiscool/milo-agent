@@ -31,21 +31,15 @@ def _resolve_workspace_dir() -> Path:
     """
     解析 workspace 目录
 
-    - 如果设置了 workspace_dir，使用它
-    - 如果是相对路径，基于项目根目录解析
-    - 如果没设置，使用默认值 ~/.milo-agent/workspace
+    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
+    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
     """
     s = settings()
     project_root = _get_project_root()
 
     if s.workspace_dir:
-        # 如果设置的是相对路径，基于项目根目录
-        if not s.workspace_dir.is_absolute():
-            return project_root / s.workspace_dir
-        return s.workspace_dir
-
-    # 默认路径
-    return Path.home() / ".milo-agent" / "workspace"
+        return project_root / s.workspace_dir
+    return project_root / "workspace"
 
 
 def _get_default_memory_dir() -> Path:

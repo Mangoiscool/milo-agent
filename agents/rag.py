@@ -11,19 +11,6 @@ from typing import Any, Optional
 from agents.agent_config import AgentConfig
 from agents.base import BaseAgent
 
-
-# 获取项目根目录
-def _get_project_root() -> Path:
-    """获取项目根目录"""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
-
-
-PROJECT_ROOT = _get_project_root()
-DEFAULT_PERSIST_DIR = PROJECT_ROOT / "workspace" / "knowledge_base"
 from core.llm.base import BaseLLM, Message, Role
 from core.logger import get_logger
 from core.memory.base import BaseMemory
@@ -42,7 +29,7 @@ from core.rag.tools import (
     RAGRemoveSourceTool,
     RAGSearchTool,
 )
-from core.rag.vector_store import KnowledgeBase, VectorStore
+from core.rag.vector_store import KnowledgeBase, VectorStore, _get_default_knowledge_base_dir
 
 
 class RAGAgent(BaseAgent):
@@ -117,7 +104,7 @@ class RAGAgent(BaseAgent):
         """
         # 保存 RAG 特有属性
         self.embedding_model = embedding_model
-        self.persist_directory = Path(persist_directory or DEFAULT_PERSIST_DIR)
+        self.persist_directory = Path(persist_directory or _get_default_knowledge_base_dir())
         self.knowledge_base_name = knowledge_base_name
         self.top_k = top_k
 

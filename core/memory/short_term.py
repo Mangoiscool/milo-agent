@@ -26,9 +26,8 @@ def _resolve_workspace_dir() -> Path:
     """
     解析 workspace 目录
 
-    - 如果设置了 workspace_dir，使用它
-    - 如果是相对路径，基于项目根目录解析
-    - 如果没设置，使用默认值 ~/.milo-agent/workspace
+    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
+    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
     """
     try:
         from config.settings import settings
@@ -36,13 +35,12 @@ def _resolve_workspace_dir() -> Path:
         project_root = _get_project_root()
 
         if s.workspace_dir:
-            if not s.workspace_dir.is_absolute():
-                return project_root / s.workspace_dir
-            return s.workspace_dir
+            return project_root / s.workspace_dir
+        return project_root / "workspace"
     except ImportError:
         pass
 
-    return Path.home() / ".milo-agent" / "workspace"
+    return _get_project_root() / "workspace"
 
 
 class ShortTermMemory(BaseMemory):

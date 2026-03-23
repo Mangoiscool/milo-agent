@@ -15,18 +15,41 @@ from .base import BrowserActionResult, ScrollDirection
 from .controller import BrowserController
 
 
-# 获取默认截图保存目录
-def _get_screenshot_dir() -> Path:
-    """获取截图保存目录"""
-    # 获取项目根目录
+def _get_project_root() -> Path:
+    """获取项目根目录"""
     current = Path(__file__).resolve()
     for parent in current.parents:
         if (parent / "pyproject.toml").exists():
-            screenshot_dir = parent / "workspace" / "browser_use" / "screenshots"
-            screenshot_dir.mkdir(parents=True, exist_ok=True)
-            return screenshot_dir
-    # 如果找不到项目根目录，使用当前目录
-    screenshot_dir = Path.cwd() / "workspace" / "browser_use" / "screenshots"
+            return parent
+    return Path.cwd()
+
+
+def _resolve_workspace_dir() -> Path:
+    """
+    解析 workspace 目录
+
+    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
+    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
+    """
+    try:
+        from config.settings import settings
+        s = settings()
+        project_root = _get_project_root()
+
+        if s.workspace_dir:
+            return project_root / s.workspace_dir
+        return project_root / "workspace"
+    except ImportError:
+        pass
+
+    return _get_project_root() / "workspace"
+
+
+# 获取默认截图保存目录
+def _get_screenshot_dir() -> Path:
+    """获取截图保存目录"""
+    workspace_dir = _resolve_workspace_dir()
+    screenshot_dir = workspace_dir / "browser_use" / "screenshots"
     screenshot_dir.mkdir(parents=True, exist_ok=True)
     return screenshot_dir
 

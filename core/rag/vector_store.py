@@ -14,6 +14,41 @@ from typing import Any
 from .base import Chunk
 
 
+def _get_project_root() -> Path:
+    """获取项目根目录"""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return Path.cwd()
+
+
+def _resolve_workspace_dir() -> Path:
+    """
+    解析 workspace 目录
+
+    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
+    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
+    """
+    try:
+        from config.settings import settings
+        s = settings()
+        project_root = _get_project_root()
+
+        if s.workspace_dir:
+            return project_root / s.workspace_dir
+        return project_root / "workspace"
+    except ImportError:
+        pass
+
+    return _get_project_root() / "workspace"
+
+
+def _get_default_knowledge_base_dir() -> Path:
+    """获取默认知识库存储目录"""
+    return _resolve_workspace_dir() / "knowledge_base"
+
+
 class VectorStore:
     """
     向量存储
@@ -341,17 +376,20 @@ class KnowledgeBase:
     def __init__(
         self,
         name: str,
-        persist_directory: Path | str,
+        persist_directory: Path | str | None = None,
         embedding_model: Any = None
     ):
         """
         Args:
             name: 知识库名称
-            persist_directory: 持久化目录
+            persist_directory: 持久化目录，None 则使用默认路径 workspace/knowledge_base
             embedding_model: Embedding 模型
         """
         self.name = name
-        self.persist_directory = Path(persist_directory)
+        if persist_directory is None:
+            self.persist_directory = _get_default_knowledge_base_dir()
+        else:
+            self.persist_directory = Path(persist_directory)
 
         self.vector_store = VectorStore(
             collection_name=name,
