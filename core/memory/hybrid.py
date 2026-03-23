@@ -35,6 +35,7 @@ class HybridMemory(BaseMemory):
         # 初始化
         embedding = create_embedding("ollama")
         memory = HybridMemory(
+            session_id="user-001",  # 统一会话 ID
             short_term=ShortTermMemory(max_messages=20),
             long_term=LongTermMemory(embedding_model=embedding)
         )
@@ -50,6 +51,7 @@ class HybridMemory(BaseMemory):
 
     def __init__(
         self,
+        session_id: Optional[str] = None,
         short_term: Optional[ShortTermMemory] = None,
         long_term: Optional[LongTermMemory] = None,
         short_term_limit: int = 20,
@@ -59,6 +61,7 @@ class HybridMemory(BaseMemory):
         初始化混合记忆
 
         Args:
+            session_id: 会话 ID，用于统一标识短期和长期记忆（可选，默认自动生成）
             short_term: 短期记忆实例（可选，不提供则创建默认实例）
             long_term: 长期记忆实例（可选，不提供则创建默认实例）
             short_term_limit: 短期记忆最大消息数
@@ -66,10 +69,20 @@ class HybridMemory(BaseMemory):
         """
         super().__init__()
 
-        # 短期记忆
-        self.short_term = short_term or ShortTermMemory(max_messages=short_term_limit)
+        import uuid
+        self.session_id = session_id or str(uuid.uuid4())
 
-        # 长期记忆（需要 embedding_model）
+        # 短期记忆（如未提供则创建，并启用持久化）
+        if short_term is not None:
+            self.short_term = short_term
+        else:
+            self.short_term = ShortTermMemory(
+                max_messages=short_term_limit,
+                persist=True,
+                session_id=self.session_id
+            )
+
+        # 长期记忆（如未提供则创建，使用统一 session_id）
         self.long_term = long_term
         if self.long_term is None:
             self.logger.warning(
@@ -77,9 +90,14 @@ class HybridMemory(BaseMemory):
                 "Long-term memory features will be disabled. "
                 "Provide a LongTermMemory instance for full functionality."
             )
+        else:
+            # 确保长期记忆使用相同的 session_id
+            self.long_term.session_id = self.session_id
 
         self.short_term_limit = short_term_limit
         self.long_term_limit = long_term_limit
+
+        self.logger.info(f"HybridMemory initialized with session_id={self.session_id[:8]}...")
 
     def add(self, message: Message) -> None:
         """

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""
-Milo Agent CLI
+"""Milo Agent CLI
 
 使用方式：
-    python -m cli.main --provider ollama --think false "你好"
+    python -m cli.main "你好"
     python -m cli.main --provider ollama --model qwen3.5:4b "你的名字是什么？"
+    python -m cli.main --react "帮我计算 15 + 25"  # 启用 ReAct
+    python -m cli.main --tools --rag "搜索文档"     # 启用工具 + RAG
 """
 
 import argparse
 import logging
 from typing import Optional
 
+from agents.milo_agent import MiloAgent
 from core.llm.factory import create_llm
-from core.llm.base import Message
 from core.logger import setup_logger, get_logger
 
 
@@ -26,7 +27,10 @@ def parse_args():
   python -m cli.main "你好"
   python -m cli.main --provider ollama --think false "简单介绍一下 Python"
   python -m cli.main --provider qwen --api-key sk-xxx --model qwen-max "写个快排"
-  python -m cli.main webui  # 启动 Web UI
+  python -m cli.main --react "帮我搜索并计算"    # 启用 ReAct 推理
+  python -m cli.main --tools                     # 启用内置工具
+  python -m cli.main --rag                       # 启用 RAG 能力
+  python -m cli.main webui                       # 启动 Web UI
         """
     )
 
@@ -82,6 +86,48 @@ def parse_args():
         type=int,
         default=None,
         help="最大输出 token 数"
+    )
+    # Agent 能力开关
+    chat_parser.add_argument(
+        "--tools",
+        action="store_true",
+        default=True,
+        help="启用内置工具（默认开启）"
+    )
+    chat_parser.add_argument(
+        "--no-tools",
+        action="store_true",
+        help="禁用内置工具"
+    )
+    chat_parser.add_argument(
+        "--react",
+        action="store_true",
+        default=False,
+        help="启用 ReAct 推理模式"
+    )
+    chat_parser.add_argument(
+        "--rag",
+        action="store_true",
+        default=False,
+        help="启用 RAG 能力"
+    )
+    chat_parser.add_argument(
+        "--browser",
+        action="store_true",
+        default=False,
+        help="启用浏览器能力"
+    )
+    chat_parser.add_argument(
+        "--memory",
+        action="store_true",
+        default=False,
+        help="启用长期记忆"
+    )
+    chat_parser.add_argument(
+        "--show-reasoning",
+        action="store_true",
+        default=False,
+        help="显示 ReAct 思考过程"
     )
 
     # webui 子命令
@@ -159,6 +205,48 @@ def parse_args():
         action="store_true",
         help="启用调试日志"
     )
+    # Agent 能力开关
+    parser.add_argument(
+        "--tools",
+        action="store_true",
+        default=True,
+        help="启用内置工具（默认开启）"
+    )
+    parser.add_argument(
+        "--no-tools",
+        action="store_true",
+        help="禁用内置工具"
+    )
+    parser.add_argument(
+        "--react",
+        action="store_true",
+        default=False,
+        help="启用 ReAct 推理模式"
+    )
+    parser.add_argument(
+        "--rag",
+        action="store_true",
+        default=False,
+        help="启用 RAG 能力"
+    )
+    parser.add_argument(
+        "--browser",
+        action="store_true",
+        default=False,
+        help="启用浏览器能力"
+    )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        default=False,
+        help="启用长期记忆"
+    )
+    parser.add_argument(
+        "--show-reasoning",
+        action="store_true",
+        default=False,
+        help="显示 ReAct 思考过程"
+    )
 
     return parser.parse_args()
 
@@ -169,9 +257,9 @@ def build_kwargs(args) -> dict:
 
     if args.model is not None:
         kwargs["model"] = args.model
-    if args.api_key is not None:
+    if hasattr(args, 'api_key') and args.api_key is not None:
         kwargs["api_key"] = args.api_key
-    if args.base_url is not None:
+    if hasattr(args, 'base_url') and args.base_url is not None:
         kwargs["base_url"] = args.base_url
     if args.think is not None:
         kwargs["think"] = args.think
@@ -240,13 +328,60 @@ def main():
         logger.error(f"创建 LLM 失败: {e}")
         return 1
 
-    # 发送消息
+    # 创建 MiloAgent
+    enable_tools = not args.no_tools if hasattr(args, 'no_tools') else args.tools
+    enable_react = args.react
+    enable_rag = args.rag
+    enable_browser = args.browser
+    enable_memory = args.memory
+    show_reasoning = args.show_reasoning
+
+    logger.info(f"创建 MiloAgent: tools={enable_tools}, react={enable_react}, rag={enable_rag}, browser={enable_browser}, memory={enable_memory}")
+
+    # 准备 MiloAgent 参数
+    agent_kwargs = {
+        "llm": llm,
+        "enable_builtin_tools": enable_tools,
+        "enable_react": enable_react,
+        "enable_rag": enable_rag,
+        "enable_browser": enable_browser,
+        "enable_long_term_memory": enable_memory,
+    }
+
+    # 如果启用 RAG 或长期记忆，需要 embedding model
+    if enable_rag or enable_memory:
+        try:
+            from core.rag.embeddings import create_embedding
+            embedding = create_embedding("ollama")
+            agent_kwargs["embedding_model"] = embedding
+            logger.info("已加载 Embedding 模型 (ollama)")
+        except Exception as e:
+            logger.warning(f"无法加载 Embedding 模型: {e}")
+            if enable_rag:
+                print("警告: RAG 需要 Embedding 模型，请确保 Ollama 正在运行")
+                enable_rag = False
+            if enable_memory:
+                print("警告: 长期记忆需要 Embedding 模型，请确保 Ollama 正在运行")
+                enable_memory = False
+            agent_kwargs["enable_rag"] = enable_rag
+            agent_kwargs["enable_long_term_memory"] = enable_memory
+
+    try:
+        agent = MiloAgent(**agent_kwargs)
+        logger.info(f"Agent 创建成功，可用工具: {agent.list_tools()}")
+    except Exception as e:
+        logger.error(f"创建 Agent 失败: {e}")
+        return 1
+
+    # 使用 Agent 对话
     logger.info(f"发送消息: {args.prompt}")
     try:
-        response = llm.chat([Message(role="user", content=args.prompt)])
-        print(response.content)
+        response = agent.chat_with_tools(args.prompt, show_reasoning=show_reasoning)
+        print(response)
     except Exception as e:
         logger.error(f"请求失败: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
     return 0
