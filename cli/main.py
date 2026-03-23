@@ -2,19 +2,101 @@
 """Milo Agent CLI
 
 使用方式：
-    python -m cli.main "你好"
-    python -m cli.main --provider ollama --model qwen3.5:4b "你的名字是什么？"
-    python -m cli.main --react "帮我计算 15 + 25"  # 启用 ReAct
-    python -m cli.main --tools --rag "搜索文档"     # 启用工具 + RAG
+    python -m cli.main chat "你好"
+    python -m cli.main chat --provider ollama --model qwen3.5:4b "你的名字是什么？"
+    python -m cli.main chat --react "帮我计算 15 + 25"
+    python -m cli.main tui                    # 启动 TUI
+    python -m cli.main webui                  # 启动 Web UI
 """
 
 import argparse
 import logging
+import sys
 from typing import Optional
 
-from agents.milo_agent import MiloAgent
 from core.llm.factory import create_llm
 from core.logger import setup_logger, get_logger
+
+
+def add_common_args(parser: argparse.ArgumentParser) -> None:
+    """添加公共参数（LLM 配置）"""
+    parser.add_argument(
+        "--provider", "-p",
+        type=str,
+        default="ollama",
+        choices=["qwen", "glm", "deepseek", "ollama"],
+        help="LLM 提供者（默认: ollama）"
+    )
+    parser.add_argument(
+        "--model", "-m",
+        type=str,
+        default=None,
+        help="模型名称（可选）"
+    )
+    parser.add_argument(
+        "--api-key", "-k",
+        type=str,
+        default=None,
+        help="API 密钥（API 提供者必需）"
+    )
+    parser.add_argument(
+        "--base-url", "-u",
+        type=str,
+        default=None,
+        help="自定义 endpoint"
+    )
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="思考模式（仅 Ollama Qwen3 等支持）"
+    )
+    parser.add_argument(
+        "--temperature", "-t",
+        type=float,
+        default=None,
+        help="温度参数 (0.0-1.0)"
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="最大输出 token 数"
+    )
+
+
+def add_capability_args(parser: argparse.ArgumentParser) -> None:
+    """添加 Agent 能力开关参数"""
+    parser.add_argument(
+        "--tools",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="启用内置工具（默认开启）"
+    )
+    parser.add_argument(
+        "--react",
+        action="store_true",
+        default=False,
+        help="启用 ReAct 推理模式"
+    )
+    parser.add_argument(
+        "--rag",
+        action="store_true",
+        default=False,
+        help="启用 RAG 能力"
+    )
+    parser.add_argument(
+        "--browser",
+        action="store_true",
+        default=False,
+        help="启用浏览器能力"
+    )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        default=False,
+        help="启用长期记忆"
+    )
 
 
 def parse_args():
@@ -23,115 +105,65 @@ def parse_args():
         description="Milo Agent - AI 命令行工具",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+子命令：
+  chat    单次对话模式
+  tui     启动 TUI 终端界面
+  webui   启动 Web UI 服务
+
 示例：
-  python -m cli.main "你好"
-  python -m cli.main --provider ollama --think false "简单介绍一下 Python"
-  python -m cli.main --provider qwen --api-key sk-xxx --model qwen-max "写个快排"
-  python -m cli.main --react "帮我搜索并计算"    # 启用 ReAct 推理
-  python -m cli.main --tools                     # 启用内置工具
-  python -m cli.main --rag                       # 启用 RAG 能力
-  python -m cli.main webui                       # 启动 Web UI
+  python -m cli.main chat "你好"
+  python -m cli.main chat --provider qwen --api-key sk-xxx "写个快排"
+  python -m cli.main chat --react --rag "搜索并计算"
+  python -m cli.main tui --rag --react
+  python -m cli.main webui --port 8080
         """
     )
 
     subparsers = parser.add_subparsers(dest="command", help="子命令")
+    subparsers.required = False  # 允许无子命令，在 main 中处理
 
-    # chat 子命令
-    chat_parser = subparsers.add_parser("chat", help="对话模式（默认）")
+    # ===== chat 子命令 =====
+    chat_parser = subparsers.add_parser(
+        "chat",
+        help="单次对话模式",
+        description="发送单条消息并获取回复"
+    )
     chat_parser.add_argument(
         "prompt",
         type=str,
-        nargs="?",
         help="要发送的消息"
     )
-    chat_parser.add_argument(
-        "--provider", "-p",
-        type=str,
-        default="ollama",
-        choices=["qwen", "glm", "deepseek", "ollama"],
-        help="LLM 提供者（默认: ollama）"
-    )
-    chat_parser.add_argument(
-        "--model", "-m",
-        type=str,
-        default=None,
-        help="模型名称（可选）"
-    )
-    chat_parser.add_argument(
-        "--api-key", "-k",
-        type=str,
-        default=None,
-        help="API 密钥（API 提供者必需）"
-    )
-    chat_parser.add_argument(
-        "--base-url", "-u",
-        type=str,
-        default=None,
-        help="自定义 endpoint"
-    )
-    chat_parser.add_argument(
-        "--think",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="思考模式（仅 Ollama Qwen3 等支持）"
-    )
-    chat_parser.add_argument(
-        "--temperature", "-t",
-        type=float,
-        default=None,
-        help="温度参数 (0.0-1.0)"
-    )
-    chat_parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=None,
-        help="最大输出 token 数"
-    )
-    # Agent 能力开关
-    chat_parser.add_argument(
-        "--tools",
-        action="store_true",
-        default=True,
-        help="启用内置工具（默认开启）"
-    )
-    chat_parser.add_argument(
-        "--no-tools",
-        action="store_true",
-        help="禁用内置工具"
-    )
-    chat_parser.add_argument(
-        "--react",
-        action="store_true",
-        default=False,
-        help="启用 ReAct 推理模式"
-    )
-    chat_parser.add_argument(
-        "--rag",
-        action="store_true",
-        default=False,
-        help="启用 RAG 能力"
-    )
-    chat_parser.add_argument(
-        "--browser",
-        action="store_true",
-        default=False,
-        help="启用浏览器能力"
-    )
-    chat_parser.add_argument(
-        "--memory",
-        action="store_true",
-        default=False,
-        help="启用长期记忆"
-    )
+    add_common_args(chat_parser)
+    add_capability_args(chat_parser)
     chat_parser.add_argument(
         "--show-reasoning",
         action="store_true",
         default=False,
         help="显示 ReAct 思考过程"
     )
+    chat_parser.add_argument(
+        "--debug", "-d",
+        action="store_true",
+        help="启用调试日志"
+    )
 
-    # webui 子命令
-    webui_parser = subparsers.add_parser("webui", help="启动 Web UI 界面")
+    # ===== tui 子命令 =====
+    tui_parser = subparsers.add_parser(
+        "tui",
+        help="启动 TUI 终端界面",
+        description="启动交互式终端聊天界面"
+    )
+    add_common_args(tui_parser)
+    add_capability_args(tui_parser)
+
+    # ===== webui 子命令 =====
+    webui_parser = subparsers.add_parser(
+        "webui",
+        help="启动 Web UI 服务",
+        description="启动 Web 界面服务"
+    )
+    add_common_args(webui_parser)
+    add_capability_args(webui_parser)
     webui_parser.add_argument(
         "--host",
         type=str,
@@ -150,116 +182,18 @@ def parse_args():
         help="启用热重载（开发模式）"
     )
 
-    # 兼容旧版：如果没有子命令，默认使用 chat
-    parser.add_argument(
-        "prompt",
-        type=str,
-        nargs="?",
-        help="要发送的消息"
-    )
-    parser.add_argument(
-        "--provider", "-p",
-        type=str,
-        default="ollama",
-        choices=["qwen", "glm", "deepseek", "ollama"],
-        help="LLM 提供者（默认: ollama）"
-    )
-    parser.add_argument(
-        "--model", "-m",
-        type=str,
-        default=None,
-        help="模型名称（可选）"
-    )
-    parser.add_argument(
-        "--api-key", "-k",
-        type=str,
-        default=None,
-        help="API 密钥（API 提供者必需）"
-    )
-    parser.add_argument(
-        "--base-url", "-u",
-        type=str,
-        default=None,
-        help="自定义 endpoint"
-    )
-    parser.add_argument(
-        "--think",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="思考模式（仅 Ollama Qwen3 等支持）"
-    )
-    parser.add_argument(
-        "--temperature", "-t",
-        type=float,
-        default=None,
-        help="温度参数 (0.0-1.0)"
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=None,
-        help="最大输出 token 数"
-    )
-    parser.add_argument(
-        "--debug", "-d",
-        action="store_true",
-        help="启用调试日志"
-    )
-    # Agent 能力开关
-    parser.add_argument(
-        "--tools",
-        action="store_true",
-        default=True,
-        help="启用内置工具（默认开启）"
-    )
-    parser.add_argument(
-        "--no-tools",
-        action="store_true",
-        help="禁用内置工具"
-    )
-    parser.add_argument(
-        "--react",
-        action="store_true",
-        default=False,
-        help="启用 ReAct 推理模式"
-    )
-    parser.add_argument(
-        "--rag",
-        action="store_true",
-        default=False,
-        help="启用 RAG 能力"
-    )
-    parser.add_argument(
-        "--browser",
-        action="store_true",
-        default=False,
-        help="启用浏览器能力"
-    )
-    parser.add_argument(
-        "--memory",
-        action="store_true",
-        default=False,
-        help="启用长期记忆"
-    )
-    parser.add_argument(
-        "--show-reasoning",
-        action="store_true",
-        default=False,
-        help="显示 ReAct 思考过程"
-    )
-
     return parser.parse_args()
 
 
-def build_kwargs(args) -> dict:
+def build_llm_kwargs(args) -> dict:
     """构建 LLM 创建参数"""
     kwargs = {}
 
     if args.model is not None:
         kwargs["model"] = args.model
-    if hasattr(args, 'api_key') and args.api_key is not None:
+    if args.api_key is not None:
         kwargs["api_key"] = args.api_key
-    if hasattr(args, 'base_url') and args.base_url is not None:
+    if args.base_url is not None:
         kwargs["base_url"] = args.base_url
     if args.think is not None:
         kwargs["think"] = args.think
@@ -271,54 +205,44 @@ def build_kwargs(args) -> dict:
     return kwargs
 
 
-def main():
-    """主函数"""
-    args = parse_args()
+def build_agent_kwargs(args, llm) -> dict:
+    """构建 Agent 创建参数"""
+    agent_kwargs = {
+        "llm": llm,
+        "enable_builtin_tools": args.tools,
+        "enable_react": args.react,
+        "enable_rag": args.rag,
+        "enable_browser": args.browser,
+        "enable_long_term_memory": args.memory,
+    }
 
-    # 处理 webui 命令
-    if args.command == "webui":
+    # 如果启用 RAG 或长期记忆，需要 embedding model
+    if args.rag or args.memory:
         try:
-            import uvicorn
-            from webui.server import app
+            from core.rag.embeddings import create_embedding
+            embedding = create_embedding("ollama")
+            agent_kwargs["embedding_model"] = embedding
+        except Exception as e:
+            if args.rag:
+                print(f"警告: RAG 需要 Embedding 模型: {e}")
+                agent_kwargs["enable_rag"] = False
+            if args.memory:
+                print(f"警告: 长期记忆需要 Embedding 模型: {e}")
+                agent_kwargs["enable_long_term_memory"] = False
 
-            print("\n" + "=" * 60)
-            print("  Milo Agent Web UI")
-            print("=" * 60)
-            print(f"  访问地址: http://{args.host if args.host != '0.0.0.0' else 'localhost'}:{args.port}")
-            print("=" * 60)
-            print("  按 Ctrl+C 停止服务器")
-            print("=" * 60 + "\n")
+    return agent_kwargs
 
-            uvicorn.run(
-                "webui.server:app",
-                host=args.host,
-                port=args.port,
-                reload=args.reload
-            )
-        except ImportError as e:
-            print("错误: 缺少必要的依赖包")
-            print("请运行: pip install 'milo-agent[webui]'")
-            print(f"详细信息: {e}")
-            return 1
-        except KeyboardInterrupt:
-            print("\n\n服务器已停止")
-        return 0
 
-    # 默认 chat 命令（兼容旧版）
+def cmd_chat(args) -> int:
+    """执行 chat 子命令"""
+    from agents.milo_agent import MiloAgent
+
     # 设置日志
     setup_logger("milo", level=logging.DEBUG if args.debug else logging.INFO)
     logger = get_logger("CLI")
 
-    # 检查是否提供了 prompt
-    if not args.prompt:
-        print("错误: 请提供要发送的消息")
-        print("使用: python -m cli.main <message>")
-        print("或使用: python -m cli.main chat <message>")
-        print("查看帮助: python -m cli.main --help")
-        return 1
-
     # 构建 LLM 参数
-    kwargs = build_kwargs(args)
+    kwargs = build_llm_kwargs(args)
 
     # 创建 LLM
     logger.info(f"创建 LLM: provider={args.provider}, {kwargs}")
@@ -328,43 +252,10 @@ def main():
         logger.error(f"创建 LLM 失败: {e}")
         return 1
 
-    # 创建 MiloAgent
-    enable_tools = not args.no_tools if hasattr(args, 'no_tools') else args.tools
-    enable_react = args.react
-    enable_rag = args.rag
-    enable_browser = args.browser
-    enable_memory = args.memory
-    show_reasoning = args.show_reasoning
-
-    logger.info(f"创建 MiloAgent: tools={enable_tools}, react={enable_react}, rag={enable_rag}, browser={enable_browser}, memory={enable_memory}")
-
-    # 准备 MiloAgent 参数
-    agent_kwargs = {
-        "llm": llm,
-        "enable_builtin_tools": enable_tools,
-        "enable_react": enable_react,
-        "enable_rag": enable_rag,
-        "enable_browser": enable_browser,
-        "enable_long_term_memory": enable_memory,
-    }
-
-    # 如果启用 RAG 或长期记忆，需要 embedding model
-    if enable_rag or enable_memory:
-        try:
-            from core.rag.embeddings import create_embedding
-            embedding = create_embedding("ollama")
-            agent_kwargs["embedding_model"] = embedding
-            logger.info("已加载 Embedding 模型 (ollama)")
-        except Exception as e:
-            logger.warning(f"无法加载 Embedding 模型: {e}")
-            if enable_rag:
-                print("警告: RAG 需要 Embedding 模型，请确保 Ollama 正在运行")
-                enable_rag = False
-            if enable_memory:
-                print("警告: 长期记忆需要 Embedding 模型，请确保 Ollama 正在运行")
-                enable_memory = False
-            agent_kwargs["enable_rag"] = enable_rag
-            agent_kwargs["enable_long_term_memory"] = enable_memory
+    # 创建 Agent
+    agent_kwargs = build_agent_kwargs(args, llm)
+    logger.info(f"创建 Agent: tools={args.tools}, react={args.react}, "
+                f"rag={args.rag}, browser={args.browser}, memory={args.memory}")
 
     try:
         agent = MiloAgent(**agent_kwargs)
@@ -376,7 +267,7 @@ def main():
     # 使用 Agent 对话
     logger.info(f"发送消息: {args.prompt}")
     try:
-        response = agent.chat_with_tools(args.prompt, show_reasoning=show_reasoning)
+        response = agent.chat_with_tools(args.prompt, show_reasoning=args.show_reasoning)
         print(response)
     except Exception as e:
         logger.error(f"请求失败: {e}")
@@ -387,6 +278,103 @@ def main():
     return 0
 
 
+def cmd_tui(args) -> int:
+    """执行 tui 子命令"""
+    # 延迟导入 textual，检查是否已安装
+    try:
+        from textual.app import App
+        del App  # 仅用于检查，避免未使用导入警告
+    except ImportError:
+        print("错误: textual 未安装")
+        print("请运行: pip install textual")
+        return 1
+
+    from tui.app import MiloTUIApp
+    from agents.milo_agent import MiloAgent
+
+    print("正在初始化 TUI...")
+    print(f"  Provider: {args.provider}")
+    print(f"  Model: {args.model or 'default'}")
+    print(f"  Tools: {args.tools}, ReAct: {args.react}, RAG: {args.rag}, Browser: {args.browser}")
+
+    try:
+        # 创建 LLM
+        kwargs = build_llm_kwargs(args)
+        llm = create_llm(args.provider, **kwargs)
+
+        # 创建 Agent
+        agent_kwargs = build_agent_kwargs(args, llm)
+        agent = MiloAgent(**agent_kwargs)
+
+        print("Agent 就绪！")
+        print("\n启动 TUI，按 Ctrl+C 退出\n")
+
+        app = MiloTUIApp(agent=agent)
+        app.run()
+    except KeyboardInterrupt:
+        print("\n再见！")
+    except Exception as e:
+        print(f"\n错误: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+    return 0
+
+
+def cmd_webui(args) -> int:
+    """执行 webui 子命令"""
+    try:
+        import uvicorn
+    except ImportError:
+        print("错误: 缺少必要的依赖包")
+        print("请运行: pip install 'milo-agent[webui]'")
+        return 1
+
+    print("\n" + "=" * 60)
+    print("  Milo Agent Web UI")
+    print("=" * 60)
+    print(f"  访问地址: http://{args.host if args.host != '0.0.0.0' else 'localhost'}:{args.port}")
+    print("=" * 60)
+    print("  按 Ctrl+C 停止服务器")
+    print("=" * 60 + "\n")
+
+    try:
+        uvicorn.run(
+            "webui.server:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload
+        )
+    except KeyboardInterrupt:
+        print("\n\n服务器已停止")
+
+    return 0
+
+
+def main():
+    """主函数"""
+    args = parse_args()
+
+    # 根据子命令执行相应功能
+    if args.command == "chat":
+        return cmd_chat(args)
+    elif args.command == "tui":
+        return cmd_tui(args)
+    elif args.command == "webui":
+        return cmd_webui(args)
+    else:
+        # 没有子命令时显示帮助
+        print("请指定子命令: chat, tui, webui")
+        print()
+        print("示例:")
+        print('  python -m cli.main chat "你好"')
+        print("  python -m cli.main tui")
+        print("  python -m cli.main webui")
+        print()
+        print("查看完整帮助: python -m cli.main --help")
+        return 1
+
+
 if __name__ == "__main__":
-    import sys
     sys.exit(main())
