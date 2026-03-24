@@ -371,6 +371,7 @@ class KnowledgeBase:
     知识库
 
     封装向量存储，提供更高级的知识库管理功能。
+    默认持久化到 workspace/knowledge_base。
     """
 
     def __init__(
@@ -397,6 +398,22 @@ class KnowledgeBase:
             embedding_model=embedding_model
         )
 
+    # ------------------------------------------------------------------
+    # 文档操作（代理到 vector_store）
+    # ------------------------------------------------------------------
+
+    def add_chunks(self, chunks: list[Chunk]) -> list[str]:
+        """
+        添加文档块
+
+        Args:
+            chunks: 文档块列表
+
+        Returns:
+            添加的文档块 ID 列表
+        """
+        return self.vector_store.add_chunks(chunks)
+
     def add_documents(self, chunks: list[Chunk]) -> int:
         """
         添加文档
@@ -406,6 +423,51 @@ class KnowledgeBase:
         """
         ids = self.vector_store.add_chunks(chunks)
         return len(ids)
+
+    def get(
+        self,
+        ids: list[str] | None = None,
+        where: dict[str, Any] | None = None,
+        limit: int | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        获取文档
+
+        Args:
+            ids: ID 列表
+            where: 元数据过滤条件
+            limit: 限制数量
+
+        Returns:
+            文档列表
+        """
+        return self.vector_store.get(ids=ids, where=where, limit=limit)
+
+    def delete(self, ids: list[str] | None = None, where: dict[str, Any] | None = None):
+        """
+        删除文档
+
+        Args:
+            ids: 要删除的 ID 列表
+            where: 元数据过滤条件
+        """
+        self.vector_store.delete(ids=ids, where=where)
+
+    def delete_by_source(self, source: str):
+        """删除指定来源的所有文档"""
+        self.vector_store.delete(where={"source": source})
+
+    def clear(self):
+        """清空知识库"""
+        self.vector_store.clear()
+
+    def delete_collection(self):
+        """删除整个集合"""
+        self.vector_store.delete_collection()
+
+    # ------------------------------------------------------------------
+    # 查询
+    # ------------------------------------------------------------------
 
     def search(
         self,
@@ -430,15 +492,39 @@ class KnowledgeBase:
             where=filters
         )
 
-    def delete_by_source(self, source: str):
-        """删除指定来源的所有文档"""
-        self.vector_store.delete(where={"source": source})
+    def query(
+        self,
+        query_text: str,
+        n_results: int = 5,
+        where: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        查询相似文本（别名，兼容 VectorStore 接口）
 
-    def clear(self):
-        """清空知识库"""
-        self.vector_store.delete_collection()
+        Args:
+            query_text: 查询文本
+            n_results: 返回结果数量
+            where: 元数据过滤条件
+
+        Returns:
+            查询结果列表
+        """
+        return self.vector_store.query(query_text=query_text, n_results=n_results, where=where)
+
+    # ------------------------------------------------------------------
+    # 统计
+    # ------------------------------------------------------------------
+
+    def count(self) -> int:
+        """获取文档数量"""
+        return self.vector_store.count()
 
     @property
     def document_count(self) -> int:
         """文档数量"""
         return self.vector_store.count()
+
+    @property
+    def is_persistent(self) -> bool:
+        """是否持久化存储"""
+        return self.vector_store.is_persistent

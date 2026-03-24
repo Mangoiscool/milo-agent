@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from core.logger import get_logger
-from core.rag import VectorStore, create_retriever, create_splitter
+from core.rag import create_retriever, create_splitter
 from core.rag.document_loader import create_default_registry
 from core.rag.embeddings import BaseEmbedding
 from core.rag.text_splitter import SplitConfig
+from core.rag.vector_store import KnowledgeBase
 
 
 class RAGManager:
@@ -61,17 +62,19 @@ class RAGManager:
         """
         self.embedding_model = embedding_model
         self.knowledge_base_name = knowledge_base_name
-        self.persist_directory = persist_directory or "./workspace/knowledge_base"
+        self.persist_directory = persist_directory
         self.retriever_type = retriever_type
 
         self.logger = get_logger(self.__class__.__name__)
 
-        # 初始化向量存储
-        self.vector_store = VectorStore(
-            collection_name=knowledge_base_name,
-            persist_directory=self.persist_directory,
+        # 初始化知识库（自动使用默认路径）
+        self.knowledge_base = KnowledgeBase(
+            name=knowledge_base_name,
+            persist_directory=persist_directory,
             embedding_model=embedding_model
         )
+        # 保持兼容：对外暴露为 vector_store
+        self.vector_store = self.knowledge_base
 
         # 初始化文本切分器
         self.splitter = create_splitter(
