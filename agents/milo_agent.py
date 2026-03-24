@@ -214,10 +214,12 @@ class MiloAgent(BaseAgent):
         Returns:
             HybridMemory 实例
         """
-        # 短期记忆
+        # 短期记忆（启用持久化）
         short_term = ShortTermMemory(
             max_messages=max_messages,
-            use_intelligent_pruning=True
+            use_intelligent_pruning=True,
+            persist=True,
+            session_id=session_id
         )
 
         # 长期记忆（如果提供了 embedding_model）
