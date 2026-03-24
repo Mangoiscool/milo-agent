@@ -73,8 +73,6 @@ class RAGManager:
             persist_directory=persist_directory,
             embedding_model=embedding_model
         )
-        # 保持兼容：vector_store 作为 knowledge_base 的别名
-        self.vector_store = self.knowledge_base
 
         # 初始化文本切分器
         self.splitter = create_splitter(
@@ -87,7 +85,7 @@ class RAGManager:
 
         # 初始化检索器
         self.retriever = create_retriever(
-            self.vector_store,
+            self.knowledge_base,
             embedding_model,
             retriever_type
         )
@@ -124,7 +122,7 @@ class RAGManager:
         chunks = self.splitter.split_documents(documents)
 
         # 存储
-        ids = self.vector_store.add_chunks(chunks)
+        ids = self.knowledge_base.add_chunks(chunks)
 
         self.logger.info(f"Added {len(ids)} chunks from {path.name}")
         return len(ids)
@@ -160,7 +158,7 @@ class RAGManager:
                 chunk.metadata.update(metadata)
 
         # 存储
-        ids = self.vector_store.add_chunks(chunks)
+        ids = self.knowledge_base.add_chunks(chunks)
 
         self.logger.info(f"Added {len(ids)} chunks from text")
         return len(ids)
@@ -200,7 +198,7 @@ class RAGManager:
         # 切分并存储
         for source, docs in by_source.items():
             chunks = self.splitter.split_documents(docs)
-            ids = self.vector_store.add_chunks(chunks)
+            ids = self.knowledge_base.add_chunks(chunks)
             results[source] = len(ids)
             self.logger.info(f"Added {len(ids)} chunks from {source}")
 
@@ -213,7 +211,7 @@ class RAGManager:
         Returns:
             来源列表
         """
-        all_docs = self.vector_store.get(limit=10000)
+        all_docs = self.knowledge_base.get(limit=10000)
 
         sources = set()
         for doc in all_docs:
@@ -233,9 +231,9 @@ class RAGManager:
         Returns:
             移除的文档数量
         """
-        count_before = self.vector_store.count()
-        self.vector_store.delete(where={"source": source})
-        count_after = self.vector_store.count()
+        count_before = self.knowledge_base.count()
+        self.knowledge_base.delete(where={"source": source})
+        count_after = self.knowledge_base.count()
 
         removed = count_before - count_after
         self.logger.info(f"Removed {removed} chunks from source: {source}")
@@ -263,7 +261,7 @@ class RAGManager:
         """
         return {
             "knowledge_base_name": self.knowledge_base_name,
-            "document_count": self.vector_store.count(),
+            "document_count": self.knowledge_base.count(),
             "sources": self.list_sources(),
             "persist_directory": self.persist_directory,
             "embedding_model": self.embedding_model.model_name if hasattr(self.embedding_model, 'model_name') else str(self.embedding_model),
@@ -276,7 +274,7 @@ class RAGManager:
         Returns:
             删除的文档数量
         """
-        count = self.vector_store.count()
-        self.vector_store.clear()
+        count = self.knowledge_base.count()
+        self.knowledge_base.clear()
         self.logger.info(f"Cleared {count} documents from knowledge base")
         return count
