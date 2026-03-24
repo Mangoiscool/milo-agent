@@ -29,7 +29,7 @@ class RAGManager:
         rag = RAGManager(
             embedding_model=embedding,
             knowledge_base_name="my_kb",
-            persist_directory="./workspace/kb"
+            persist_directory="workspace/kb"
         )
 
         # 添加文档
@@ -73,7 +73,7 @@ class RAGManager:
             persist_directory=persist_directory,
             embedding_model=embedding_model
         )
-        # 保持兼容：对外暴露为 vector_store
+        # 保持兼容：vector_store 作为 knowledge_base 的别名
         self.vector_store = self.knowledge_base
 
         # 初始化文本切分器
