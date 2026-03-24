@@ -26,20 +26,6 @@ from core.rag.embeddings import BaseEmbedding
 from core.rag.text_splitter import SplitConfig
 
 
-def _get_project_root() -> Path:
-    """获取项目根目录"""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
-
-
-PROJECT_ROOT = _get_project_root()
-DEFAULT_KB_DIR = PROJECT_ROOT / "workspace" / "knowledge_base"
-DEFAULT_MEMORY_DIR = PROJECT_ROOT / "workspace" / "long_term_memory"
-
-
 class MiloAgent(BaseAgent):
     """
     统一的主 Agent
@@ -173,7 +159,7 @@ class MiloAgent(BaseAgent):
             self.rag_manager = RAGManager(
                 embedding_model=embedding_model,
                 knowledge_base_name=knowledge_base_name,
-                persist_directory=persist_directory or str(DEFAULT_KB_DIR),
+                persist_directory=persist_directory,
                 retriever_type=retriever_type,
                 splitter_config=splitter_config
             )
@@ -237,11 +223,10 @@ class MiloAgent(BaseAgent):
         # 长期记忆（如果提供了 embedding_model）
         long_term = None
         if embedding_model:
-            persist_dir = memory_persist_directory or str(DEFAULT_MEMORY_DIR)
             long_term = LongTermMemory(
                 embedding_model=embedding_model,
                 session_id=session_id,
-                persist_directory=persist_dir
+                persist_directory=memory_persist_directory
             )
             self.logger.info("Long-term memory enabled")
 
