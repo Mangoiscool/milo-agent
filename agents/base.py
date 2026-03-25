@@ -31,6 +31,10 @@ class AgentEvent(str, Enum):
     MEMORY_PRUNED = "memory_pruned"      # 记忆被裁剪
     TOOL_CALL = "tool_call"              # 工具被调用
     TOOL_RESULT = "tool_result"          # 工具返回结果
+    # Plan-and-Solve 事件
+    PLAN_CREATED = "plan_created"        # 计划已创建
+    STEP_START = "step_start"            # 步骤开始执行
+    STEP_END = "step_end"                # 步骤执行结束
 
 
 class BaseAgent(ABC):
