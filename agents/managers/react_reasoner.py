@@ -9,7 +9,7 @@ import json
 import re
 from typing import Callable, List, Optional
 
-from core.llm.base import BaseLLM, Message, Role
+from core.llm.base import BaseLLM, LLMResponse, Message, Role
 from core.logger import get_logger
 from core.memory.base import BaseMemory
 from core.reasoning.react import ActionStep, ObservationStep, ReActTrace, ThoughtStep
@@ -130,8 +130,8 @@ Final Answer: 北京今天晴天，气温25°C。"""
 
             self.logger.debug(f"Iteration {iteration + 1}: {content[:200]}...")
 
-            # 解析响应
-            thought, action_name, action_input = self._parse_response(content)
+            # 解析响应（支持文本格式和 tool_calls）
+            thought, action_name, action_input = self._parse_response(content, response)
 
             # 记录 Thought
             if thought:
@@ -139,8 +139,22 @@ Final Answer: 北京今天晴天，气温25°C。"""
                 self.logger.debug(f"Thought: {thought[:100]}...")
 
             # 检查是否完成
-            if "Final Answer:" in content or not action_name:
+            if "Final Answer:" in content or (not action_name and not response.tool_calls):
                 final_answer = content.split("Final Answer:")[-1].strip() if "Final Answer:" in content else content.strip()
+
+                # 如果 final_answer 为空，尝试从 content 中提取 Thought 后的内容作为答案
+                if not final_answer or final_answer == "...":
+                    # 尝试提取 Thought 后的内容
+                    thought_match = re.search(r'Thought:\s*(.+?)(?:\nAction:|\nFinal Answer:|$)', content, re.DOTALL)
+                    if thought_match:
+                        final_answer = thought_match.group(1).strip()
+                    else:
+                        # 如果没有 Thought，使用整个 content
+                        final_answer = content.strip()
+
+                    # 如果还是空的，返回一个友好的提示
+                    if not final_answer:
+                        final_answer = "抱歉，我没能生成有效答案。请重试。"
 
                 # 添加到记忆
                 self.memory.add(Message(role=Role.ASSISTANT, content=final_answer))
@@ -184,11 +198,11 @@ Final Answer: 北京今天晴天，气温25°C。"""
                 )
                 trace.steps.append(obs_step)
 
-                # 将工具结果添加到记忆
+                # 将工具结果添加到记忆（使用 assistant 角色，避免 tool 角色格式问题）
+                observation_text = result.content if not result.is_error else f"Error: {result.error_message}"
                 self.memory.add(Message(
-                    role=Role.TOOL,
-                    content=result.content if not result.is_error else f"Error: {result.error_message}",
-                    name=action_name
+                    role=Role.ASSISTANT,
+                    content=f"Observation: {observation_text}"
                 ))
 
         # 超过最大迭代次数
@@ -204,7 +218,7 @@ Final Answer: 北京今天晴天，气温25°C。"""
         """构建 ReAct Prompt"""
         messages = []
 
-        # 添加系统提示
+        # 添加系统提示（角色设定 + ReAct 指令）
         system_content = self.system_prompt + "\n\n" + self.REACT_INSTRUCTIONS
         messages.append(Message(role=Role.SYSTEM, content=system_content))
 
@@ -212,6 +226,20 @@ Final Answer: 北京今天晴天，气温25°C。"""
         if self.tool_registry.count() > 0:
             tools_desc = self._format_tools()
             messages.append(Message(role=Role.SYSTEM, content=f"可用工具：\n{tools_desc}"))
+
+        # 从记忆系统构建上下文（包含检索的长期记忆 + 短期记忆）
+        if hasattr(self.memory, 'build_context'):
+            # HybridMemory: 检索长期记忆并添加短期记忆
+            context_messages = self.memory.build_context(
+                current_query=question,
+                include_system_prompt=True
+            )
+            # 添加记忆上下文（包括长期记忆的系统提示和短期记忆）
+            messages.extend(context_messages)
+        else:
+            # BaseMemory: 只获取短期记忆
+            recent_messages = self.memory.get_recent(20)
+            messages.extend(recent_messages)
 
         # 添加历史执行轨迹
         if trace.steps:
@@ -232,24 +260,39 @@ Final Answer: 北京今天晴天，气温25°C。"""
                 lines.append(f"  参数: {d.parameters}")
         return "\n".join(lines)
 
-    def _parse_response(self, response: str) -> tuple:
-        """解析 ReAct 响应，提取 Thought、Action 和 Action Input"""
+    def _parse_response(self, content: str, response: Optional[LLMResponse] = None) -> tuple:
+        """
+        解析 ReAct 响应，提取 Thought、Action 和 Action Input
+
+        支持两种格式：
+        1. 文本格式：Thought/Action/Action Input
+        2. OpenAI tool_calls 格式
+        """
         thought = ""
         action_name = None
         action_input = {}
 
-        # 解析 Thought
-        thought_match = re.search(r'Thought:\s*(.+?)(?:\nAction:|\nFinal Answer:|$)', response, re.DOTALL)
+        # 首先检查是否有 tool_calls（OpenAI 函数调用格式）
+        if response and response.tool_calls:
+            # 取第一个 tool_call
+            tool_call = response.tool_calls[0]
+            action_name = tool_call.name
+            action_input = tool_call.arguments
+            thought = content.strip() if content else f"使用 {action_name} 工具"
+            return thought, action_name, action_input
+
+        # 解析 Thought（使用 content 字符串，不是 response 对象）
+        thought_match = re.search(r'Thought:\s*(.+?)(?:\nAction:|\nFinal Answer:|$)', content, re.DOTALL)
         if thought_match:
             thought = thought_match.group(1).strip()
 
         # 解析 Action
-        action_match = re.search(r'Action:\s*(\w+)', response)
+        action_match = re.search(r'Action:\s*(\w+)', content)
         if action_match:
             action_name = action_match.group(1).strip()
 
         # 解析 Action Input
-        input_match = re.search(r'Action Input:\s*(\{[^}]*\}|[^\n]+)', response)
+        input_match = re.search(r'Action Input:\s*(\{[^}]*\}|[^\n]+)', content)
         if input_match:
             input_str = input_match.group(1).strip()
             try:
