@@ -126,6 +126,49 @@ class Message(BaseModel):
         
         return result
 
+    @classmethod
+    def from_api_format(cls, data: dict) -> "Message":
+        """
+        从 API 格式创建 Message 实例
+
+        支持 OpenAI 兼容格式：
+        - system/user: {role, content}
+        - assistant (带工具调用): {role, content, tool_calls}
+        - tool: {role: "tool", content, tool_call_id, name}
+        """
+        role = Role(data.get("role", "user"))
+        content = data.get("content")
+        name = data.get("name")
+        tool_call_id = data.get("tool_call_id")
+
+        # 解析 tool_calls
+        tool_calls = None
+        if "tool_calls" in data and data["tool_calls"]:
+            tool_calls = []
+            for tc in data["tool_calls"]:
+                # 处理不同的格式
+                if "function" in tc:
+                    func = tc["function"]
+                    args = func.get("arguments", "{}")
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except json.JSONDecodeError:
+                            args = {}
+                    tool_calls.append(ToolCall(
+                        id=tc.get("id", ""),
+                        name=func.get("name", ""),
+                        arguments=args
+                    ))
+
+        return cls(
+            role=role,
+            content=content,
+            name=name,
+            tool_calls=tool_calls,
+            tool_call_id=tool_call_id
+        )
+
 
 # ═══════════════════════════════════════════════════════════════
 # LLM 响应
