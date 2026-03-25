@@ -209,7 +209,7 @@ class MiloAgent(BaseAgent):
             # 注册 RAG 工具
             self.tool_manager.register_rag_tools(
                 retriever=self.rag_manager.retriever,
-                vector_store=self.rag_manager.vector_store,
+                vector_store=self.rag_manager.knowledge_base,
                 splitter=self.rag_manager.splitter,
                 document_loader=self.rag_manager.document_loader
             )
