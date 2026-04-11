@@ -15,39 +15,6 @@ from core.llm.base import Message, Role
 from core.memory.base import BaseMemory
 from core.rag.embeddings import BaseEmbedding
 from core.rag.vector_store import VectorStore
-from config.settings import settings
-
-
-def _get_project_root() -> Path:
-    """获取项目根目录"""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
-
-
-def _resolve_workspace_dir() -> Path:
-    """
-    解析 workspace 目录
-
-    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
-    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
-    """
-    s = settings()
-    project_root = _get_project_root()
-
-    if s.workspace_dir:
-        return project_root / s.workspace_dir
-    return project_root / "workspace"
-
-
-def _get_default_memory_dir() -> Path:
-    """获取默认长期记忆存储目录（向量存储）"""
-    return _resolve_workspace_dir() / "memory_storage" / "vector_store"
-
-
-DEFAULT_MEMORY_DIR = _get_default_memory_dir()
 
 
 @dataclass
@@ -136,7 +103,7 @@ class LongTermMemory(BaseMemory):
         self,
         embedding_model: BaseEmbedding,
         session_id: Optional[str] = None,
-        persist_directory: str = str(DEFAULT_MEMORY_DIR),
+        persist_directory: Optional[str] = None,
         default_top_k: int = 5
     ):
         """
@@ -145,7 +112,7 @@ class LongTermMemory(BaseMemory):
         Args:
             embedding_model: Embedding 模型实例
             session_id: 会话 ID，用于区分不同会话的记忆
-            persist_directory: 向量数据库持久化目录
+            persist_directory: 向量数据库持久化目录（None 则使用内存存储）
             default_top_k: 默认检索数量
         """
         super().__init__()

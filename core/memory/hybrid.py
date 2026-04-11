@@ -5,12 +5,44 @@
 
 from __future__ import annotations
 
+import uuid
+from pathlib import Path
 from typing import List, Optional
 
 from core.llm.base import Message, Role
 from core.memory.base import BaseMemory
 from core.memory.long_term import LongTermMemory
 from core.memory.short_term import ShortTermMemory
+
+
+def _get_project_root() -> Path:
+    """获取项目根目录"""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return Path.cwd()
+
+
+def _resolve_workspace_dir() -> Path:
+    """
+    解析 workspace 目录
+
+    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
+    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
+    """
+    try:
+        from config.settings import settings
+        s = settings()
+        project_root = _get_project_root()
+
+        if s.workspace_dir:
+            return project_root / s.workspace_dir
+        return project_root / "workspace"
+    except ImportError:
+        pass
+
+    return _get_project_root() / "workspace"
 
 
 class HybridMemory(BaseMemory):
@@ -49,13 +81,19 @@ class HybridMemory(BaseMemory):
             print(f"{msg.role}: {msg.content}")
     """
 
+    # 默认存储路径
+    DEFAULT_SHORT_TERM_PATH = "memory_storage/sessions"
+    DEFAULT_LONG_TERM_PATH = "memory_storage/embeddings"
+
     def __init__(
         self,
         session_id: Optional[str] = None,
         short_term: Optional[ShortTermMemory] = None,
         long_term: Optional[LongTermMemory] = None,
         short_term_limit: int = 20,
-        long_term_limit: int = 5
+        long_term_limit: int = 5,
+        short_term_path: Optional[str] = None,
+        long_term_path: Optional[str] = None
     ):
         """
         初始化混合记忆
@@ -66,23 +104,33 @@ class HybridMemory(BaseMemory):
             long_term: 长期记忆实例（可选，不提供则创建默认实例）
             short_term_limit: 短期记忆最大消息数
             long_term_limit: 长期记忆检索时的默认返回数
+            short_term_path: 短期记忆存储路径（None 则使用内存存储，默认使用 workspace/memory_storage/sessions）
+            long_term_path: 长期记忆存储路径（None 则使用内存存储，默认使用 workspace/memory_storage/embeddings）
         """
         super().__init__()
 
-        import uuid
         self.session_id = session_id or str(uuid.uuid4())
 
-        # 短期记忆（如未提供则创建，并启用持久化）
+        # 解析存储路径
+        workspace_dir = _resolve_workspace_dir()
+        self._short_term_storage_path = (
+            Path(short_term_path) if short_term_path else None
+        )
+        self._long_term_storage_path = (
+            Path(long_term_path) if long_term_path else workspace_dir / self.DEFAULT_LONG_TERM_PATH
+        )
+
+        # 短期记忆（如未提供则创建）
         if short_term is not None:
             self.short_term = short_term
         else:
             self.short_term = ShortTermMemory(
                 max_messages=short_term_limit,
-                persist=True,
-                session_id=self.session_id
+                session_id=self.session_id,
+                storage_path=self._short_term_storage_path
             )
 
-        # 长期记忆（如未提供则创建，使用统一 session_id）
+        # 长期记忆（如未提供则创建）
         self.long_term = long_term
         if self.long_term is None:
             self.logger.warning(
@@ -296,13 +344,18 @@ class HybridMemory(BaseMemory):
             包含短期和长期记忆统计的字典
         """
         stats = {
+            "session_id": self.session_id,
             "short_term": {
                 "count": self.short_term.count(),
-                "max_messages": self.short_term.max_messages
+                "max_messages": self.short_term.max_messages,
+                "persist_enabled": self.short_term.persist,
+                "storage_path": str(self._short_term_storage_path) if self._short_term_storage_path else None
             },
             "long_term": {
                 "available": self.long_term is not None,
-                "count": self.long_term.count() if self.long_term else 0
+                "count": self.long_term.count() if self.long_term else 0,
+                "persist_enabled": self.long_term is not None and self._long_term_storage_path is not None,
+                "storage_path": str(self._long_term_storage_path) if self._long_term_storage_path else None
             }
         }
         return stats

@@ -257,11 +257,20 @@ class MiloAgent(BaseAgent):
         Returns:
             HybridMemory 实例
         """
+        from pathlib import Path
+        import tempfile
+
+        # 确定短期记忆的持久化目录
+        if memory_persist_directory:
+            short_term_storage = Path(memory_persist_directory)
+        else:
+            short_term_storage = Path(tempfile.gettempdir()) / "milo_agent_memory"
+
         # 短期记忆（启用持久化）
         short_term = ShortTermMemory(
             max_messages=max_messages,
             use_intelligent_pruning=True,
-            persist=True,
+            storage_path=short_term_storage,
             session_id=session_id
         )
 

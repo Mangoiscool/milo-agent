@@ -13,36 +13,6 @@ from core.llm.base import Message, Role
 from core.memory.base import BaseMemory
 
 
-def _get_project_root() -> Path:
-    """获取项目根目录"""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
-
-
-def _resolve_workspace_dir() -> Path:
-    """
-    解析 workspace 目录
-
-    - 如果设置了 workspace_dir，基于项目根目录解析（仅支持相对路径）
-    - 如果没设置，使用默认 workspace 目录（项目根目录/workspace）
-    """
-    try:
-        from config.settings import settings
-        s = settings()
-        project_root = _get_project_root()
-
-        if s.workspace_dir:
-            return project_root / s.workspace_dir
-        return project_root / "workspace"
-    except ImportError:
-        pass
-
-    return _get_project_root() / "workspace"
-
-
 class ShortTermMemory(BaseMemory):
     """
     支持自动修剪的短期记忆，可选持久化到文件
@@ -106,9 +76,8 @@ class ShortTermMemory(BaseMemory):
         self,
         max_messages: int = 50,
         use_intelligent_pruning: bool = False,
-        persist: bool = False,
         session_id: Optional[str] = None,
-        auto_save: bool = True
+        storage_path: Optional[Path] = None
     ):
         """
         初始化短期记忆
@@ -116,9 +85,8 @@ class ShortTermMemory(BaseMemory):
         参数：
             max_messages: 最大存储消息数量（默认：50）
             use_intelligent_pruning: 启用基于评分的修剪（默认：False）
-            persist: 启用持久化到文件（默认：False）
-            session_id: 会话 ID，None 则自动生成（仅在 persist=True 时有效）
-            auto_save: 每次 add 后自动保存（仅在 persist=True 时有效）
+            session_id: 会话 ID，None 则自动生成
+            storage_path: 持久化存储目录路径（None 则使用内存存储，不持久化）
         """
         super().__init__()
         self.max_messages = max_messages
@@ -126,12 +94,14 @@ class ShortTermMemory(BaseMemory):
         self._messages: List[Message] = []
 
         # 持久化相关配置
-        self.persist = persist
-        self.auto_save = auto_save
+        # storage_path 为 None 表示不持久化，有值则启用持久化 + 自动保存
+        self.persist = storage_path is not None
+        self.auto_save = self.persist  # 持久化时自动启用 auto_save
         self.session_id = session_id
         self._storage_path: Optional[Path] = None
+        self._storage_dir: Optional[Path] = storage_path
 
-        if persist:
+        if self.persist:
             self._init_persistence(session_id)
 
     def add(self, message: Message) -> None:
@@ -316,8 +286,13 @@ class ShortTermMemory(BaseMemory):
 
     def _init_persistence(self, session_id: Optional[str] = None) -> None:
         """初始化持久化配置"""
-        base_dir = _resolve_workspace_dir()
-        storage_dir = base_dir / "memory_storage" / "sessions"
+        # 使用传入的 storage_path
+        if self._storage_dir:
+            storage_dir = self._storage_dir
+        else:
+            # 不应该发生，因为 storage_path 为 None 时不会调用此方法
+            raise RuntimeError("storage_path is required for persistence")
+
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         self.session_id = session_id or str(uuid.uuid4())
@@ -375,10 +350,10 @@ class ShortTermMemory(BaseMemory):
             messages_data = data.get("messages", [])
             messages = [Message.from_api_format(m) for m in messages_data]
 
-            # 清空当前内存并添加（会触发修剪）
+            # 清空当前内存并添加（直接添加到列表，避免触发保存和修剪）
             self._messages.clear()
             for msg in messages:
-                super().add(msg)  # 使用父类 add 避免触发保存
+                self._messages.append(msg)
 
             return len(messages)
 
@@ -411,8 +386,11 @@ class ShortTermMemory(BaseMemory):
 
         # 更新会话 ID 和路径
         self.session_id = new_session_id
-        base_dir = _resolve_workspace_dir()
-        self._storage_path = base_dir / "memory_storage" / "sessions" / f"{new_session_id}.json"
+        storage_dir = self._storage_dir
+        if not storage_dir:
+            import tempfile
+            storage_dir = Path(tempfile.gettempdir()) / "milo_agent_memory"
+        self._storage_path = storage_dir / f"{new_session_id}.json"
 
         # 加载新会话
         loaded = self.load()
@@ -450,8 +428,11 @@ class ShortTermMemory(BaseMemory):
             return False
 
         target_id = session_id or self.session_id
-        base_dir = _resolve_workspace_dir()
-        target_path = base_dir / "memory_storage" / "sessions" / f"{target_id}.json"
+        storage_dir = self._storage_dir
+        if not storage_dir:
+            import tempfile
+            storage_dir = Path(tempfile.gettempdir()) / "milo_agent_memory"
+        target_path = storage_dir / f"{target_id}.json"
 
         if target_path.exists():
             target_path.unlink()
@@ -465,15 +446,20 @@ class ShortTermMemory(BaseMemory):
         return False
 
     @classmethod
-    def list_sessions(cls) -> List[Dict]:
+    def list_sessions(cls, storage_dir: Optional[Path] = None) -> List[Dict]:
         """
         列出所有可用的会话
+
+        参数：
+            storage_dir: 存储目录路径（None 则无法列出会话，必须提供有效的存储路径）
 
         返回：
             会话信息列表
         """
-        base_dir = _resolve_workspace_dir()
-        sessions_dir = base_dir / "memory_storage" / "sessions"
+        if not storage_dir:
+            return []
+
+        sessions_dir = storage_dir
 
         if not sessions_dir.exists():
             return []
@@ -499,15 +485,20 @@ class ShortTermMemory(BaseMemory):
         return sessions
 
     @classmethod
-    def delete_all_sessions(cls) -> int:
+    def delete_all_sessions(cls, storage_dir: Optional[Path] = None) -> int:
         """
         删除所有会话
+
+        参数：
+            storage_dir: 存储目录路径（None 则不会删除任何会话，必须提供有效的存储路径）
 
         返回：
             删除的会话数量
         """
-        base_dir = _resolve_workspace_dir()
-        sessions_dir = base_dir / "memory_storage" / "sessions"
+        if not storage_dir:
+            return 0
+
+        sessions_dir = storage_dir
 
         if not sessions_dir.exists():
             return 0

@@ -16,16 +16,20 @@ from typing import Optional
 
 from core.llm.factory import create_llm
 from core.logger import setup_logger, get_logger
+from config.settings import get_settings
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
     """添加公共参数（LLM 配置）"""
+    settings = get_settings()
+    default_provider = settings.default_provider
+
     parser.add_argument(
         "--provider", "-p",
         type=str,
-        default="ollama",
+        default=default_provider,
         choices=["qwen", "glm", "deepseek", "ollama"],
-        help="LLM 提供者（默认: ollama）"
+        help=f"LLM 提供者（默认: {default_provider}）"
     )
     parser.add_argument(
         "--model", "-m",
@@ -77,25 +81,25 @@ def add_capability_args(parser: argparse.ArgumentParser) -> None:
         "--react",
         action="store_true",
         default=False,
-        help="启用 ReAct 推理模式"
+        help="[已弃用] ReAct 推理模式现已默认启用"
     )
     parser.add_argument(
         "--rag",
         action="store_true",
         default=False,
-        help="启用 RAG 能力"
+        help="启用 RAG 知识库能力（需要 Embedding 模型）"
     )
     parser.add_argument(
         "--browser",
         action="store_true",
         default=False,
-        help="启用浏览器能力"
+        help="启用浏览器自动化能力"
     )
     parser.add_argument(
         "--memory",
         action="store_true",
         default=False,
-        help="启用长期记忆"
+        help="启用长期记忆（需要 Embedding 模型）"
     )
 
 
@@ -186,17 +190,60 @@ def parse_args():
 
 
 def build_llm_kwargs(args) -> dict:
-    """构建 LLM 创建参数"""
+    """构建 LLM 创建参数，优先使用 CLI 参数，其次使用 .env 配置"""
+    settings = get_settings()
     kwargs = {}
 
+    # 模型：CLI 参数 > .env 默认值
     if args.model is not None:
         kwargs["model"] = args.model
+    else:
+        # 根据 provider 从 settings 获取默认模型
+        provider_defaults = {
+            "qwen": settings.qwen_model,
+            "glm": settings.glm_model,
+            "deepseek": settings.deepseek_model,
+            "ollama": settings.ollama_model,
+        }
+        default_model = provider_defaults.get(args.provider)
+        if default_model:
+            kwargs["model"] = default_model
+
+    # API Key：CLI 参数 > .env 配置
     if args.api_key is not None:
         kwargs["api_key"] = args.api_key
+    else:
+        # 根据 provider 从 settings 获取 API key
+        api_key_defaults = {
+            "qwen": settings.qwen_api_key,
+            "glm": settings.glm_api_key,
+            "deepseek": settings.deepseek_api_key,
+        }
+        api_key = api_key_defaults.get(args.provider)
+        if api_key:
+            kwargs["api_key"] = api_key
+
+    # Base URL：CLI 参数 > .env 配置
     if args.base_url is not None:
         kwargs["base_url"] = args.base_url
-    if args.think is not None:
-        kwargs["think"] = args.think
+    else:
+        base_url_defaults = {
+            "qwen": settings.qwen_base_url,
+            "glm": settings.glm_base_url,
+            "deepseek": settings.deepseek_base_url,
+        }
+        base_url = base_url_defaults.get(args.provider)
+        if base_url:
+            kwargs["base_url"] = base_url
+
+    # Ollama 特有配置
+    if args.provider == "ollama":
+        if args.think is not None:
+            kwargs["think"] = args.think
+        elif settings.ollama_think:
+            kwargs["think"] = settings.ollama_think
+
+    # 其他通用参数
     if args.temperature is not None:
         kwargs["temperature"] = args.temperature
     if args.max_tokens is not None:
@@ -210,13 +257,11 @@ def build_agent_kwargs(args, llm) -> dict:
     agent_kwargs = {
         "llm": llm,
         "enable_builtin_tools": args.tools,
-        "enable_react": args.react,
-        "enable_rag": args.rag,
         "enable_browser": args.browser,
-        "enable_long_term_memory": args.memory,
     }
 
     # 如果启用 RAG 或长期记忆，需要 embedding model
+    # MiloAgent 通过 embedding_model 是否存在来决定是否启用 RAG 和长期记忆
     if args.rag or args.memory:
         try:
             from core.rag.embeddings import create_embedding
@@ -225,10 +270,8 @@ def build_agent_kwargs(args, llm) -> dict:
         except Exception as e:
             if args.rag:
                 print(f"警告: RAG 需要 Embedding 模型: {e}")
-                agent_kwargs["enable_rag"] = False
             if args.memory:
                 print(f"警告: 长期记忆需要 Embedding 模型: {e}")
-                agent_kwargs["enable_long_term_memory"] = False
 
     return agent_kwargs
 
@@ -254,8 +297,8 @@ def cmd_chat(args) -> int:
 
     # 创建 Agent
     agent_kwargs = build_agent_kwargs(args, llm)
-    logger.info(f"创建 Agent: tools={args.tools}, react={args.react}, "
-                f"rag={args.rag}, browser={args.browser}, memory={args.memory}")
+    logger.info(f"创建 Agent: tools={args.tools}, "
+                f"browser={args.browser}, embedding={'enabled' if args.rag or args.memory else 'disabled'}")
 
     try:
         agent = MiloAgent(**agent_kwargs)
@@ -295,7 +338,7 @@ def cmd_tui(args) -> int:
     print("正在初始化 TUI...")
     print(f"  Provider: {args.provider}")
     print(f"  Model: {args.model or 'default'}")
-    print(f"  Tools: {args.tools}, ReAct: {args.react}, RAG: {args.rag}, Browser: {args.browser}")
+    print(f"  Tools: {args.tools}, Browser: {args.browser}, Embedding: {'enabled' if args.rag or args.memory else 'disabled'}")
 
     try:
         # 创建 LLM
