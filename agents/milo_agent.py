@@ -11,7 +11,7 @@ MiloAgent - 统一的主 Agent
 """
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 from agents.agent_config import AgentConfig
 from agents.base import AgentEvent, BaseAgent
@@ -191,6 +191,9 @@ class MiloAgent(BaseAgent):
 
         # 初始化工具管理器
         self.tool_manager = ToolManager()
+
+        # 覆盖父类的空 tool_registry，使用 tool_manager 的 registry
+        self.tool_registry = self.tool_manager.registry
 
         # 注册内置工具
         if enable_builtin_tools:
@@ -419,3 +422,21 @@ class MiloAgent(BaseAgent):
 
         cap_str = f" [{', '.join(caps)}]" if caps else ""
         return f"<MiloAgent tools={self.tool_manager.count()}{cap_str}>"
+
+    # ------------------------------------------------------------------
+    # 兼容属性（用于 WebUI 等旧代码）
+    # ------------------------------------------------------------------
+
+    @property
+    def enable_rag(self) -> bool:
+        """是否启用 RAG"""
+        return self.rag_manager is not None
+
+    @property
+    def enable_browser(self) -> bool:
+        """是否启用浏览器"""
+        return self.browser_manager is not None
+
+    def list_tools(self) -> List[str]:
+        """列出所有工具名称"""
+        return self.tool_manager.list_tools()

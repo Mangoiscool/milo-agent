@@ -6,7 +6,7 @@ FastAPI backend with WebSocket streaming support
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import uvicorn
@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from core.llm.factory import create_llm
 from core.llm.base import Message, Role
 from agents.milo_agent import MiloAgent
+from agents.base import AgentEvent
 from core.rag import create_embedding
 from core.browser import BrowserConfig
 
@@ -124,7 +125,6 @@ class AgentManager:
         agent = MiloAgent(
             llm=llm,
             enable_builtin_tools=True,
-            enable_rag=enable_rag,
             embedding_model=embedding_model,
             enable_browser=enable_browser,
             browser_config=browser_config
@@ -150,6 +150,61 @@ class AgentManager:
 
 
 agent_manager = AgentManager()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Chat Event Handler
+# ═══════════════════════════════════════════════════════════════
+
+async def handle_chat_with_events(
+    agent: MiloAgent,
+    message: str,
+    session_id: str
+) -> None:
+    """
+    处理对话并发送事件
+
+    使用 MiloAgent 的 chat() 方法，通过事件系统捕获工具调用
+    """
+    collected_events: List[dict] = []
+
+    def on_tool_call(name: str, arguments: dict):
+        collected_events.append({
+            "type": "tool_call",
+            "name": name,
+            "args": str(arguments)
+        })
+
+    def on_tool_result(name: str, result: str, is_error: bool):
+        truncated = result[:500] if result else ""
+        collected_events.append({
+            "type": "tool_result",
+            "name": name,
+            "result": truncated,
+            "is_error": is_error
+        })
+
+    agent.on(AgentEvent.TOOL_CALL, on_tool_call)
+    agent.on(AgentEvent.TOOL_RESULT, on_tool_result)
+
+    try:
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: agent.chat(message)
+        )
+
+        for event in collected_events:
+            await manager.send(session_id, event)
+
+        await manager.send(session_id, {
+            "type": "assistant",
+            "content": response
+        })
+
+    finally:
+        agent.off(AgentEvent.TOOL_CALL, on_tool_call)
+        agent.off(AgentEvent.TOOL_RESULT, on_tool_result)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -327,94 +382,8 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
             # 发送用户消息确认
             await manager.send(session_id, {"type": "user", "content": message})
 
-            # 添加用户消息到 memory
-            agent.memory.add(Message(role=Role.USER, content=message))
-
-            # 处理对话
-            if agent.tool_registry.count() > 0 and hasattr(agent, 'chat_with_tools'):
-                # 有工具支持
-                for iteration in range(10):
-                    messages = agent._build_messages()
-
-                    # 调试日志
-                    print(f"[DEBUG] Iteration {iteration}, messages: {len(messages)}")
-                    print(f"[DEBUG] Tools available: {[t.name for t in agent.tool_registry.get_all_definitions()]}")
-
-                    # 打印系统提示词
-                    for msg in messages:
-                        if msg.role.value == "system":
-                            print(f"[DEBUG] System prompt (first 200 chars): {msg.content[:200]}...")
-
-                    # 打印用户消息
-                    for msg in messages:
-                        if msg.role.value == "user":
-                            print(f"[DEBUG] User message: {msg.content}")
-
-                    response = agent.llm.chat_with_tools(
-                        messages,
-                        tools=agent.tool_registry.get_all_definitions()
-                    )
-
-                    # 调试日志
-                    print(f"[DEBUG] Response: finish_reason={response.finish_reason}")
-                    print(f"[DEBUG] Response content: {response.content[:100] if response.content else 'empty'}")
-                    print(f"[DEBUG] Tool calls: {len(response.tool_calls) if response.tool_calls else 0}")
-                    if response.tool_calls:
-                        for tc in response.tool_calls:
-                            print(f"[DEBUG]   - {tc.name}: {tc.arguments}")
-
-                    # 检查是否有工具调用（只要有 tool_calls 就执行）
-                    if response.tool_calls:
-                        # 保存 assistant 消息（包含 tool_calls）
-                        agent.memory.add(Message(
-                            role=Role.ASSISTANT,
-                            content=response.content or "",
-                            tool_calls=response.tool_calls
-                        ))
-
-                        # 如果有文本内容，发送回复
-                        if response.content:
-                            await manager.send(session_id, {
-                                "type": "assistant",
-                                "content": response.content
-                            })
-
-                        # 执行工具调用
-                        for tool_call in response.tool_calls:
-                            await manager.send(session_id, {
-                                "type": "tool_call",
-                                "name": tool_call.name,
-                                "args": str(tool_call.arguments)
-                            })
-
-                            result = await agent.tool_registry.aexecute(tool_call.name, **tool_call.arguments)
-
-                            await manager.send(session_id, {
-                                "type": "tool_result",
-                                "name": tool_call.name,
-                                "result": result.content[:500] if result.content else "",
-                                "is_error": result.is_error
-                            })
-
-                            # 保存工具结果
-                            agent.memory.add(Message(
-                                role=Role.TOOL,
-                                content=result.content if not result.is_error else f"Error: {result.error_message}",
-                                name=tool_call.name,
-                                tool_call_id=tool_call.id
-                            ))
-                    else:
-                        # 不需要调用工具，发送最终回复并退出
-                        agent.memory.add(Message(role=Role.ASSISTANT, content=response.content))
-                        await manager.send(session_id, {
-                            "type": "assistant",
-                            "content": response.content
-                        })
-                        break
-            else:
-                # 普通对话
-                response = agent.chat(message)
-                await manager.send(session_id, {"type": "assistant", "content": response})
+            # 使用统一的事件处理
+            await handle_chat_with_events(agent, message, session_id)
 
     except WebSocketDisconnect:
         print(f"Client disconnected: {session_id}")
